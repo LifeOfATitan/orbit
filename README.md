@@ -5,7 +5,7 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
 ## Interface Preview
 
 <p align="center">
-  <video src="screenshots/orbit_fs.mp4" width="800" controls alt="Orbit Main Interface">
+  <img src="screenshots/orbit_demo.gif" width="800" alt="Orbit Main Interface">
 </p>
 
 ## Features
@@ -29,6 +29,11 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
   - **Hot-Reloading**: Change colors in real-time without restarting the application.
   - **System Integration**: Automatically syncs with system background, foreground, and accent colors.
   - **Complimentary Logic**: Intelligent luminance detection to ensure perfect text contrast.
+
+<p align="center">
+  <img src="screenshots/orbit_theme.gif" width="600" alt="Orbit Theme Synchronization">
+</p>
+
 - **Daemon Mode & Integration**
   - Background daemon for instant toggle via Unix socket.
   - **Systemd Integration**: Native user service for automatic startup.
