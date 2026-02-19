@@ -30,7 +30,7 @@ pub struct OrbitWindow {
     error_box: gtk::Box,
     error_label: gtk::Label,
     theme: Rc<RefCell<Theme>>,
-    css_provider: Rc<RefCell<Option<gtk4::CssProvider>>>,
+    css_provider: gtk4::CssProvider,
 }
 
 impl Clone for OrbitWindow {
@@ -60,7 +60,7 @@ impl Clone for OrbitWindow {
 }
 
 impl OrbitWindow {
-    pub fn new(app: &Application, config: Config, theme: Theme) -> Self {
+    pub fn new(app: &Application, config: Config, theme: Rc<RefCell<Theme>>) -> Self {
         let window = ApplicationWindow::builder()
             .application(app)
             .default_width(420)
@@ -74,54 +74,60 @@ impl OrbitWindow {
         window.set_keyboard_mode(KeyboardMode::OnDemand);
         window.set_default_size(420, 500);
         
-        // Fix for sharp corners and artifacts on Wayland
         window.add_css_class("background");
         
-        let theme = Rc::new(RefCell::new(theme));
+        let css_provider = gtk4::CssProvider::new();
         
+        let display = gtk4::gdk::Display::default().expect("Failed to get default display");
+        gtk4::style_context_add_provider_for_display(
+            &display,
+            &css_provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_USER,
+        );
+
         let (col, row) = config.position_tuple();
         
         match (col, row) {
             (0, 0) => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Top, config.margin_top);
-                window.set_margin(Edge::Left, config.margin_left);
+                window.set_margin(Edge::Top, 10);
+                window.set_margin(Edge::Left, 10);
             }
             (1, 0) => {
                 window.set_anchor(Edge::Top, true);
-                window.set_margin(Edge::Top, config.margin_top);
+                window.set_margin(Edge::Top, 10);
             }
             (2, 0) => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Top, config.margin_top);
-                window.set_margin(Edge::Right, config.margin_right);
+                window.set_margin(Edge::Top, 10);
+                window.set_margin(Edge::Right, 10);
             }
             (0, 1) => {
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Left, config.margin_left);
+                window.set_margin(Edge::Left, 10);
             }
             (1, 1) => {}
             (2, 1) => {
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Right, config.margin_right);
+                window.set_margin(Edge::Right, 10);
             }
             (0, 2) => {
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
-                window.set_margin(Edge::Left, config.margin_left);
+                window.set_margin(Edge::Bottom, 10);
+                window.set_margin(Edge::Left, 10);
             }
             (1, 2) => {
                 window.set_anchor(Edge::Bottom, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
+                window.set_margin(Edge::Bottom, 10);
             }
             (2, 2) => {
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
-                window.set_margin(Edge::Right, config.margin_right);
+                window.set_margin(Edge::Bottom, 10);
+                window.set_margin(Edge::Right, 10);
             }
             _ => {}
         }
@@ -349,7 +355,7 @@ impl OrbitWindow {
             error_box,
             error_label,
             theme,
-            css_provider: Rc::new(RefCell::new(None)),
+            css_provider,
         };
 
         // Add Escape key shortcut to hide the window
@@ -381,25 +387,7 @@ impl OrbitWindow {
     
     pub fn apply_theme(&self) {
         let css = self.theme.borrow().generate_css();
-        
-        let display = gtk4::gdk::Display::default().expect("Failed to get default display");
-        
-        // Remove old provider if it exists
-        if let Some(old_provider) = self.css_provider.borrow().as_ref() {
-            gtk4::style_context_remove_provider_for_display(&display, old_provider);
-        }
-
-        let provider = gtk4::CssProvider::new();
-        provider.load_from_data(&css);
-        
-        gtk4::style_context_add_provider_for_display(
-            &display,
-            &provider,
-            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
-
-        // Store the new provider
-        *self.css_provider.borrow_mut() = Some(provider);
+        self.css_provider.load_from_data(&css);
     }
     
     pub fn show(&self) {

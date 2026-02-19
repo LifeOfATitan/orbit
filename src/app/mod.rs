@@ -67,7 +67,7 @@ impl OrbitApp {
             let win_theme = win_theme.clone();
             
             let rt = Arc::new(tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"));
-            let win = OrbitWindow::new(app, config, win_theme.borrow().clone());
+            let win = OrbitWindow::new(app, config, win_theme.clone());
             
             let nm: Arc<Mutex<Option<NetworkManager>>> = Arc::new(Mutex::new(None));
             let bt: Arc<Mutex<Option<BluetoothManager>>> = Arc::new(Mutex::new(None));
@@ -629,7 +629,7 @@ fn setup_ui_callbacks(
 }
 
 fn setup_periodic_refresh(
-    win: OrbitWindow,
+    _win: OrbitWindow,
     nm: Arc<Mutex<Option<NetworkManager>>>,
     bt: Arc<Mutex<Option<BluetoothManager>>>,
     rt: Arc<tokio::runtime::Runtime>,

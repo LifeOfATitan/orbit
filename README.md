@@ -27,7 +27,7 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
   - Pair, connect, disconnect, and remove/forget devices
   - Clean separation of Connected, Paired, and Available devices
 - **Modern UI/UX**
-  - **High-Contrast Glassmorphism**: Deep violet and gold theme with translucent panels.
+  - **High-Contrast Glassmorphism**: Deep violet and cyan theme with translucent panels.
   - **Smooth Transitions**: Animated slide-up overlays for passwords, details, and errors.
   - **Dynamic Positioning**: Can be anchored to any corner or center edge via CLI.
   - **Keyboard Friendly**: `Escape` key support to close overlays or hide the window.
@@ -119,8 +119,10 @@ margin_right = 10
 ### Theme File (`~/.config/orbit/theme.toml`)
 
 ```toml
-accent_primary = "#8B5CF6"    # Violet
-accent_secondary = "#D97706"  # Gold
+accent_primary = "#8b5cf6"    # Violet
+accent_secondary = "#06b6d4"  # Cyan
+background = "#1e1e2e"       # Dark Navy
+foreground = "#d4d4d8"       # Gray
 ```
 
 ## License

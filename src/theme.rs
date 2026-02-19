@@ -19,10 +19,10 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Theme {
-            accent_primary: "#8B5CF6".to_string(),
-            accent_secondary: "#D97706".to_string(),
-            background: "#0f0f14".to_string(),
-            foreground: "#ffffff".to_string(),
+            accent_primary: "#8b5cf6".to_string(),
+            accent_secondary: "#06b6d4".to_string(),
+            background: "#1e1e2e".to_string(),
+            foreground: "#d4d4d8".to_string(),
         }
     }
 }
@@ -58,7 +58,7 @@ impl Theme {
     }
     
     pub fn theme_path() -> std::path::PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home".to_string());
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/home/amadeus".to_string());
         std::path::PathBuf::from(home)
             .join(".config")
             .join("orbit")
@@ -107,29 +107,35 @@ impl Theme {
         
         let is_dark = self.get_luminance(bg) < 0.5;
         
-        // Match switcher logic: sections are slightly different from main bg
         let section_bg_hex = self.adjust_color(bg, 0.2); 
-        let panel_bg = self.hex_to_rgba(bg, 0.85);
-        let section_bg = self.hex_to_rgba(&section_bg_hex, 0.95);
+        let panel_bg = self.hex_to_rgba(bg, 0.91); // Requested 91% opacity
+        let section_bg = self.hex_to_rgba(&section_bg_hex, 0.94);
+        let opaque_bg = self.hex_to_rgba(bg, 0.99); 
         
         let card_bg = if is_dark {
             "rgba(255, 255, 255, 0.08)".to_string()
         } else {
-            "rgba(0, 0, 0, 0.05)".to_string()
+            "rgba(0, 0, 0, 0.04)".to_string()
         };
 
-        let separator = self.hex_to_rgba(accent, 0.2);
+        let card_hover_bg = if is_dark {
+            "rgba(255, 255, 255, 0.15)".to_string()
+        } else {
+            "rgba(0, 0, 0, 0.1)".to_string()
+        };
+
+        let separator = self.hex_to_rgba(accent, 0.3);
         
         format!(r#"
 /* ========================================
    ORBIT DYNAMIC THEME
-   Synced with System Colors
    ======================================== */
 
 /* Main Panel */
 .orbit-panel {{
-    background: {panel_bg};
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    background-color: {panel_bg};
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
     color: {fg};
     padding: 8px;
@@ -152,7 +158,8 @@ window {{
 
 /* Header */
 .orbit-header {{
-    background: {section_bg};
+    background-color: {section_bg};
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent);
     border-bottom: 1px solid {separator};
     border-radius: 16px 16px 0 0;
     margin: -8px -8px 8px -8px;
@@ -161,7 +168,7 @@ window {{
 
 /* Tabs */
 .orbit-tab-bar {{
-    background: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.05);
     border-radius: 9999px;
     padding: 4px;
 }}
@@ -174,121 +181,170 @@ window {{
     border: none;
     box-shadow: none;
     outline: none;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 600;
     transition: all 0.2s ease;
     min-width: 80px;
 }}
 
 .orbit-tab:hover {{
-    opacity: 0.9;
-    color: {fg};
+    opacity: 1.0;
+    color: #ffffff;
+    background-color: {gold}; /* Match button hover colors */
+    border-radius: 9999px;
 }}
 
 .orbit-tab.active {{
-    background: rgba(255, 255, 255, 0.15) !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
     border-radius: 9999px;
     color: {fg};
     opacity: 1.0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }}
 
+/* Overlays - Opaque with padding */
+.orbit-details-overlay, 
+.orbit-password-overlay, 
+.orbit-error-overlay {{
+    background-color: {opaque_bg};
+    border: 2px solid {accent};
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    color: {fg};
+    margin: 20px;
+    padding: 24px;
+}}
+
+.orbit-details-overlay label,
+.orbit-password-overlay label {{
+    color: {fg};
+}}
+
 /* Glass Cards */
 .orbit-network-row,
 .orbit-device-row,
 .orbit-saved-network-row {{
-    background: {card_bg};
+    background-color: {card_bg};
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     padding: 12px 14px;
     margin: 6px 8px;
-    transition: all 0.2s ease;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
 .orbit-network-row:hover,
 .orbit-device-row:hover,
 .orbit-saved-network-row:hover {{
+    background-color: {card_hover_bg};
     border-color: {accent};
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transform: scale(1.01);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }}
 
 /* Connected State */
 .orbit-network-row.connected,
 .orbit-device-row.connected,
 .orbit-saved-network-row.active {{
-    background: linear-gradient(135deg, {separator}, rgba(0,0,0,0.1));
+    background: linear-gradient(135deg, {separator}, rgba(0,0,0,0.15));
     border: 1px solid {accent};
+    box-shadow: 0 0 10px {separator};
 }}
 
 /* Buttons */
 .orbit-button {{
-    background: rgba(255, 255, 255, 0.05);
+    background-color: rgba(255, 255, 255, 0.08);
     color: {fg};
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
-    padding: 6px 14px;
-    font-size: 11px;
+    padding: 8px 18px;
+    font-size: 10px;
     font-weight: 700;
     transition: all 0.2s ease;
 }}
 
 .orbit-button:hover {{
-    background: rgba(255, 255, 255, 0.15);
-    border-color: {accent};
+    background-color: {gold};
+    border-color: {gold};
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
 }}
 
 .orbit-button.primary {{
-    background: {accent};
+    background-color: {accent};
     color: #ffffff;
     box-shadow: 0 4px 12px {separator};
+    border: none;
+}}
+
+.orbit-button.primary:hover {{
+    background-color: {gold};
+    color: #ffffff;
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }}
 
 /* Section Headers */
 .orbit-section-header {{
     font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.15em;
     color: {gold};
     font-weight: 800;
     padding: 0 12px;
-    margin-top: 8px;
+    margin-top: 12px;
     margin-bottom: 8px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }}
 
 /* Footer */
 .orbit-footer {{
-    background: {section_bg};
+    background-color: {section_bg};
     border-top: 1px solid {separator};
     border-radius: 0 0 16px 16px;
     margin: 8px -8px -8px -8px;
-    padding: 20px 24px;
+    padding: 24px 28px;
 }}
 
 .orbit-ssid {{
-    font-weight: 600;
+    font-weight: 700;
     font-size: 14px;
     color: {fg};
 }}
 
 .orbit-detail-label {{
-    font-size: 11px;
+    font-size: 10px;
     color: {fg};
-    opacity: 0.6;
+    opacity: 0.7;
 }}
 
 .orbit-detail-value {{
-    font-size: 13px;
+    font-size: 12px;
     color: {fg};
-    font-weight: 500;
+    font-weight: 600;
 }}
 
 .orbit-icon-accent {{
     color: {accent};
 }}
+
+/* Inputs */
+entry, password-entry {{
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: {fg};
+    border-radius: 12px;
+    padding: 10px 14px;
+}}
+
+entry:focus, password-entry:focus {{
+    border-color: {accent};
+    box-shadow: 0 0 0 1px {accent};
+}}
 "#,
             panel_bg = panel_bg,
             section_bg = section_bg,
+            opaque_bg = opaque_bg,
             card_bg = card_bg,
+            card_hover_bg = card_hover_bg,
             separator = separator,
             accent = accent,
             gold = gold,
