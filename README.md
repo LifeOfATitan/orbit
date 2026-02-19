@@ -107,7 +107,7 @@ Orbit is designed to look native in your bar. Add the following module to your W
     "return-type": "json",
     "interval": 10,
     "on-click": "orbit toggle top-right",
-    "format": "󱑫"
+    "format": "󱗿"
 }
 ```
 **Styling Waybar Module**

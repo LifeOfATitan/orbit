@@ -112,7 +112,7 @@ fn waybar_status() {
                 }
             }
         }
-        println!(r#"{{"text": "󱑫", "tooltip": "{}"}}"#, status);
+        println!(r#"{{"text": "󱗿", "tooltip": "{}"}}"#, status);
     });
 }
 
