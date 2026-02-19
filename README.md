@@ -116,8 +116,8 @@ Go to your waybar style.css file and just add this in there
 
 ```css
 #custom-orbit {
-    background-color: #8b5cf6;
-    color: #ffffff;
+    background-color: #8b5cf6;          //add whatever color you want
+    color: #ffffff;                     //whatever color you want
     padding: 6px 12px;
     margin: 6px 3px;
     border-radius: 4px;
