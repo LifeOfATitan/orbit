@@ -25,7 +25,7 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
   - **Smooth Transitions**: Animated slide-up overlays for passwords, details, and errors.
   - **Dynamic Positioning**: Can be anchored to any corner or center edge via CLI.
   - **Keyboard Friendly**: `Escape` key support to close overlays or hide the window.
-- **Theme Synchronization**
+- **Theme Synchronization - ONLY WORKS WITH my hyprland dot files on the other repo**
   - **Hot-Reloading**: Change colors in real-time without restarting the application.
   - **System Integration**: Automatically syncs with system background, foreground, and accent colors.
   - **Complimentary Logic**: Intelligent luminance detection to ensure perfect text contrast.
