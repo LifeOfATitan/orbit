@@ -27,10 +27,14 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
   - Pair, connect, disconnect, and remove/forget devices
   - Clean separation of Connected, Paired, and Available devices
 - **Modern UI/UX**
-  - **High-Contrast Glassmorphism**: Deep violet and cyan theme with translucent panels.
+  - **High-Contrast Glassmorphism**: High-quality translucent panels with customizable opacity.
   - **Smooth Transitions**: Animated slide-up overlays for passwords, details, and errors.
   - **Dynamic Positioning**: Can be anchored to any corner or center edge via CLI.
   - **Keyboard Friendly**: `Escape` key support to close overlays or hide the window.
+- **Theme Synchronization**
+  - **Hot-Reloading**: Change colors in real-time without restarting the application.
+  - **System Integration**: Automatically syncs with system background, foreground, and accent colors.
+  - **Complimentary Logic**: Intelligent luminance detection to ensure perfect text contrast.
 - **Daemon Mode & Integration**
   - Background daemon for instant toggle via Unix socket.
   - **Systemd Integration**: Native user service for automatic startup.
@@ -83,6 +87,9 @@ orbit toggle [top-left|top|top-right|bottom-left|bottom|bottom-right]
 # Output status in JSON for Waybar
 orbit waybar-status
 
+# Manually trigger a theme reload
+orbit reload-theme
+
 # Run as daemon (handled automatically by systemd service)
 orbit daemon
 
@@ -119,10 +126,10 @@ margin_right = 10
 ### Theme File (`~/.config/orbit/theme.toml`)
 
 ```toml
-accent_primary = "#8b5cf6"    # Violet
-accent_secondary = "#06b6d4"  # Cyan
-background = "#1e1e2e"       # Dark Navy
-foreground = "#d4d4d8"       # Gray
+accent_primary = "#8b5cf6"    # Primary accent (e.g. Violet)
+accent_secondary = "#06b6d4"  # Secondary accent / Hover (e.g. Cyan)
+background = "#1e1e2e"       # System background color
+foreground = "#d4d4d8"       # System text color
 ```
 
 ## License
