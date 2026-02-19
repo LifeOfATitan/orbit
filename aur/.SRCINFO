@@ -1,0 +1,17 @@
+pkgbase = orbit-wifi
+	pkgdesc = A WiFi/Bluetooth manager for Wayland with glassmorphism UI
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/yourusername/orbit
+	arch = x86_64
+	license = MIT
+	depends = gtk4
+	depends = gtk4-layer-shell
+	depends = networkmanager
+	depends = bluez
+	makedepends = cargo
+	makedepends = rust
+	source = orbit-wifi-0.1.0.tar.gz::https://github.com/yourusername/orbit/archive/v0.1.0.tar.gz
+	sha256sums = SKIP
+
+pkgname = orbit-wifi
