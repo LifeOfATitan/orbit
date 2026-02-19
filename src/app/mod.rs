@@ -59,15 +59,15 @@ impl OrbitApp {
     
     pub fn run(&self) -> glib::ExitCode {
         let config = self.config.clone();
-        let theme = self.theme.clone();
+        let win_theme = self.theme.clone();
         let is_daemon = self.is_daemon;
         
         self.app.connect_activate(move |app| {
             let config = config.clone();
-            let theme = theme.clone();
+            let win_theme = win_theme.clone();
             
             let rt = Arc::new(tokio::runtime::Runtime::new().expect("Failed to create Tokio runtime"));
-            let win = OrbitWindow::new(app, config, theme.borrow().clone());
+            let win = OrbitWindow::new(app, config, win_theme.borrow().clone());
             
             let nm: Arc<Mutex<Option<NetworkManager>>> = Arc::new(Mutex::new(None));
             let bt: Arc<Mutex<Option<BluetoothManager>>> = Arc::new(Mutex::new(None));
@@ -117,7 +117,7 @@ impl OrbitApp {
                 win.show();
             }
             
-            setup_events_receiver(win.clone(), rx.clone(), is_visible.clone(), nm.clone(), bt.clone(), rt.clone(), tx.clone());
+            setup_events_receiver(win.clone(), rx.clone(), is_visible.clone(), nm.clone(), bt.clone(), rt.clone(), tx.clone(), win_theme.clone());
             setup_ui_callbacks(win.clone(), nm.clone(), bt.clone(), rt.clone(), tx.clone());
             setup_periodic_refresh(win.clone(), nm, bt, rt, tx.clone(), is_visible.clone());
             
@@ -146,6 +146,7 @@ fn setup_events_receiver(
     bt: Arc<Mutex<Option<BluetoothManager>>>,
     rt: Arc<tokio::runtime::Runtime>,
     tx: async_channel::Sender<AppEvent>,
+    win_theme: Rc<RefCell<Theme>>,
 ) {
     glib::spawn_future_local(async move {
         while let Ok(event) = rx.recv().await {
@@ -254,6 +255,11 @@ fn setup_events_receiver(
                                     }
                                 });
                             }
+                        }
+                        DaemonCommand::ReloadTheme => {
+                            let new_theme = Theme::load();
+                            *win_theme.borrow_mut() = new_theme;
+                            win.apply_theme();
                         }
                         DaemonCommand::Quit => {
                             std::process::exit(0);

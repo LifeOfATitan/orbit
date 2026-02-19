@@ -7,7 +7,7 @@ mod ui;
 mod app;
 
 use config::Config;
-use app::daemon::DaemonClient;
+use app::daemon::{DaemonClient, DaemonCommand};
 
 #[derive(Parser)]
 #[command(name = "orbit")]
@@ -29,6 +29,8 @@ enum Commands {
         /// Optional position override (top-left, top, top-right)
         position: Option<String>,
     },
+    /// Reload theme from configuration
+    ReloadTheme,
     /// Output status in JSON format for Waybar
     WaybarStatus,
 }
@@ -42,6 +44,7 @@ fn main() {
         Some(Commands::List) => list_networks(),
         Some(Commands::Daemon) => run_daemon(config),
         Some(Commands::Toggle { position }) => toggle_daemon(position),
+        Some(Commands::ReloadTheme) => reload_theme(),
         Some(Commands::WaybarStatus) => waybar_status(),
         None => run_gui(config),
     }
@@ -63,8 +66,6 @@ fn run_daemon(config: Config) {
 }
 
 fn toggle_daemon(position: Option<String>) {
-    use app::daemon::DaemonCommand;
-    
     if !DaemonClient::is_daemon_running() {
         eprintln!("Daemon is not running. Start it with: orbit daemon");
         std::process::exit(1);
@@ -76,6 +77,25 @@ fn toggle_daemon(position: Option<String>) {
         }
         Err(e) => {
             eprintln!("Failed to send command: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn reload_theme() {
+    if !DaemonClient::is_daemon_running() {
+        // If daemon is not running, just print a message.
+        // The theme will be loaded normally next time it starts.
+        println!("Daemon not running, nothing to reload.");
+        return;
+    }
+    
+    match DaemonClient::send_command(DaemonCommand::ReloadTheme) {
+        Ok(response) => {
+            println!("Theme reload triggered: {}", response);
+        }
+        Err(e) => {
+            eprintln!("Failed to trigger theme reload: {}", e);
             std::process::exit(1);
         }
     }

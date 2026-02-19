@@ -30,6 +30,7 @@ pub struct OrbitWindow {
     error_box: gtk::Box,
     error_label: gtk::Label,
     theme: Rc<RefCell<Theme>>,
+    css_provider: Rc<RefCell<Option<gtk4::CssProvider>>>,
 }
 
 impl Clone for OrbitWindow {
@@ -53,6 +54,7 @@ impl Clone for OrbitWindow {
             error_box: self.error_box.clone(),
             error_label: self.error_label.clone(),
             theme: self.theme.clone(),
+            css_provider: self.css_provider.clone(),
         }
     }
 }
@@ -347,6 +349,7 @@ impl OrbitWindow {
             error_box,
             error_label,
             theme,
+            css_provider: Rc::new(RefCell::new(None)),
         };
 
         // Add Escape key shortcut to hide the window
@@ -376,19 +379,27 @@ impl OrbitWindow {
         win
     }
     
-    fn apply_theme(&self) {
+    pub fn apply_theme(&self) {
         let css = self.theme.borrow().generate_css();
         
-        let display = gtk4::gdk::Display::default().unwrap();
+        let display = gtk4::gdk::Display::default().expect("Failed to get default display");
         
+        // Remove old provider if it exists
+        if let Some(old_provider) = self.css_provider.borrow().as_ref() {
+            gtk4::style_context_remove_provider_for_display(&display, old_provider);
+        }
+
         let provider = gtk4::CssProvider::new();
-        gtk4::CssProvider::load_from_data(&provider, &css);
+        provider.load_from_data(&css);
         
         gtk4::style_context_add_provider_for_display(
             &display,
             &provider,
             gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
         );
+
+        // Store the new provider
+        *self.css_provider.borrow_mut() = Some(provider);
     }
     
     pub fn show(&self) {

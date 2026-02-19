@@ -1,16 +1,19 @@
-use std::path::Path;
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
 struct ThemeFile {
     accent_primary: Option<String>,
     accent_secondary: Option<String>,
+    background: Option<String>,
+    foreground: Option<String>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Theme {
     pub accent_primary: String,
     pub accent_secondary: String,
+    pub background: String,
+    pub foreground: String,
 }
 
 impl Default for Theme {
@@ -18,6 +21,8 @@ impl Default for Theme {
         Theme {
             accent_primary: "#8B5CF6".to_string(),
             accent_secondary: "#D97706".to_string(),
+            background: "#0f0f14".to_string(),
+            foreground: "#ffffff".to_string(),
         }
     }
 }
@@ -31,12 +36,12 @@ impl Theme {
                 Ok(content) => {
                     match toml::from_str::<ThemeFile>(&content) {
                         Ok(theme_file) => {
-                            return Theme {
-                                accent_primary: theme_file.accent_primary
-                                    .unwrap_or_else(|| Self::default().accent_primary),
-                                accent_secondary: theme_file.accent_secondary
-                                    .unwrap_or_else(|| Self::default().accent_secondary),
-                            };
+                            let mut theme = Self::default();
+                            if let Some(c) = theme_file.accent_primary { theme.accent_primary = c; }
+                            if let Some(c) = theme_file.accent_secondary { theme.accent_secondary = c; }
+                            if let Some(c) = theme_file.background { theme.background = c; }
+                            if let Some(c) = theme_file.foreground { theme.foreground = c; }
+                            return theme;
                         }
                         Err(e) => {
                             eprintln!("Failed to parse theme file: {}", e);
@@ -59,23 +64,74 @@ impl Theme {
             .join("orbit")
             .join("theme.toml")
     }
+
+    fn hex_to_rgb(&self, hex: &str) -> (u8, u8, u8) {
+        let hex = hex.trim_start_matches('#');
+        if hex.len() != 6 {
+            return (0, 0, 0);
+        }
+        let r = u8::from_str_radix(&hex[0..2], 16).unwrap_or(0);
+        let g = u8::from_str_radix(&hex[2..4], 16).unwrap_or(0);
+        let b = u8::from_str_radix(&hex[4..6], 16).unwrap_or(0);
+        (r, g, b)
+    }
+
+    fn get_luminance(&self, hex: &str) -> f32 {
+        let (r, g, b) = self.hex_to_rgb(hex);
+        (0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32) / 255.0
+    }
+
+    fn adjust_color(&self, hex: &str, factor: f32) -> String {
+        let (r, g, b) = self.hex_to_rgb(hex);
+        let is_light = self.get_luminance(hex) > 0.5;
+        
+        let new_factor = if is_light { 1.0 - factor } else { 1.0 + factor };
+        
+        let nr = (r as f32 * new_factor).clamp(0.0, 255.0) as u8;
+        let ng = (g as f32 * new_factor).clamp(0.0, 255.0) as u8;
+        let nb = (b as f32 * new_factor).clamp(0.0, 255.0) as u8;
+        
+        format!("#{:02x}{:02x}{:02x}", nr, ng, nb)
+    }
+
+    fn hex_to_rgba(&self, hex: &str, alpha: f32) -> String {
+        let (r, g, b) = self.hex_to_rgb(hex);
+        format!("rgba({}, {}, {}, {})", r, g, b, alpha)
+    }
     
     pub fn generate_css(&self) -> String {
         let accent = &self.accent_primary;
         let gold = &self.accent_secondary;
+        let bg = &self.background;
+        let fg = &self.foreground;
+        
+        let is_dark = self.get_luminance(bg) < 0.5;
+        
+        // Match switcher logic: sections are slightly different from main bg
+        let section_bg_hex = self.adjust_color(bg, 0.2); 
+        let panel_bg = self.hex_to_rgba(bg, 0.85);
+        let section_bg = self.hex_to_rgba(&section_bg_hex, 0.95);
+        
+        let card_bg = if is_dark {
+            "rgba(255, 255, 255, 0.08)".to_string()
+        } else {
+            "rgba(0, 0, 0, 0.05)".to_string()
+        };
+
+        let separator = self.hex_to_rgba(accent, 0.2);
         
         format!(r#"
 /* ========================================
-   ORBIT GLASSMORPHISM THEME
-   Violet & Gold Color Scheme
+   ORBIT DYNAMIC THEME
+   Synced with System Colors
    ======================================== */
 
 /* Main Panel */
 .orbit-panel {{
-    background: rgba(15, 15, 20, 0.75);
+    background: {panel_bg};
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
-    color: #ffffff;
+    color: {fg};
     padding: 8px;
     margin: 0;
 }}
@@ -94,65 +150,16 @@ window {{
     border-radius: 16px;
 }}
 
-/* Header - making it darker and using shades of violet/gold */
-.orbit-header {{
-    background: rgba(20, 15, 30, 0.9); /* Darker violet-tinted background */
-    border-bottom: 1px solid rgba(139, 92, 246, 0.2); /* Subtle violet separator */
-    border-radius: 16px 16px 0 0;
-    margin: -8px -8px 8px -8px;
-    padding: 16px 16px 8px 16px;
-}}
-
-/* Scan Button Footer - matching header contrast */
-.orbit-footer {{
-    background: rgba(20, 15, 30, 0.9); /* Darker violet-tinted background */
-    border-top: 1px solid rgba(139, 92, 246, 0.2); /* Subtle violet separator */
-    border-radius: 0 0 16px 16px;
-    margin: 8px -8px -8px -8px;
-    padding: 20px 24px;
-}}
-
-/* Contrast for items - using your gold accent */
-.orbit-section-header {{
-    color: {gold};
-    font-weight: 800;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-}}
-
-window {{
-    background: none;
-    background-color: transparent;
-    box-shadow: none;
-    border: none;
-}}
-
-/* Header - making it slightly darker/different to create contrast with panel */
-.orbit-header {{
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 16px 16px 0 0;
-    margin: -8px -8px 8px -8px;
-    padding: 16px 16px 8px 16px;
-}}
-
-/* Scan Button Footer - also darker to match header contrast */
-.orbit-footer {{
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 0 0 16px 16px;
-    margin: 8px -8px -8px -8px;
-    padding: 20px 24px;
-}}
-
-window {{
-    background: transparent;
-}}
-
 /* Header */
 .orbit-header {{
-    background: transparent;
+    background: {section_bg};
+    border-bottom: 1px solid {separator};
+    border-radius: 16px 16px 0 0;
+    margin: -8px -8px 8px -8px;
     padding: 16px 16px 8px 16px;
 }}
 
-/* Tabs - Unified pill, no separation */
+/* Tabs */
 .orbit-tab-bar {{
     background: rgba(255, 255, 255, 0.05);
     border-radius: 9999px;
@@ -162,52 +169,35 @@ window {{
 .orbit-tab {{
     background: transparent;
     background-image: none;
-    color: rgba(255, 255, 255, 0.5);
-    border-radius: 0;
-    padding: 8px 16px;
+    color: {fg};
+    opacity: 0.6;
     border: none;
     box-shadow: none;
     outline: none;
-    -gtk-icon-shadow: none;
-    text-shadow: none;
     font-size: 12px;
     font-weight: 600;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
     min-width: 80px;
 }}
 
 .orbit-tab:hover {{
-    background: transparent;
-    background-image: none;
-    color: rgba(255, 255, 255, 0.85);
-    box-shadow: none;
-    border: none;
-    outline: none;
-}}
-
-.orbit-tab:active {{
-    background: transparent;
-    background-image: none;
-    outline: none;
-}}
-
-.orbit-tab:focus {{
-    outline: none;
-    box-shadow: none;
+    opacity: 0.9;
+    color: {fg};
 }}
 
 .orbit-tab.active {{
-    background: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.15) !important;
     border-radius: 9999px;
-    color: #ffffff;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    color: {fg};
+    opacity: 1.0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }}
 
-/* Glass Cards - Network/Device Rows */
+/* Glass Cards */
 .orbit-network-row,
 .orbit-device-row,
 .orbit-saved-network-row {{
-    background: rgba(255, 255, 255, 0.08);
+    background: {card_bg};
     border: 1px solid rgba(255, 255, 255, 0.05);
     border-radius: 12px;
     padding: 12px 14px;
@@ -215,290 +205,94 @@ window {{
     transition: all 0.2s ease;
 }}
 
-/* Card hover - Border glow + shadow tint */
 .orbit-network-row:hover,
 .orbit-device-row:hover,
 .orbit-saved-network-row:hover {{
-    background: rgba(255, 255, 255, 0.05);
-    border-color: rgba(217, 119, 6, 0.35);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(217, 119, 6, 0.1);
+    border-color: {accent};
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }}
 
-/* Connected/Active State - Violet to Gold gradient */
+/* Connected State */
 .orbit-network-row.connected,
 .orbit-device-row.connected,
 .orbit-saved-network-row.active {{
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.15), rgba(217, 119, 6, 0.1));
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: linear-gradient(135deg, {separator}, rgba(0,0,0,0.1));
+    border: 1px solid {accent};
 }}
 
-.orbit-network-row.connected:hover,
-.orbit-device-row.connected:hover,
-.orbit-saved-network-row.active:hover {{
-    background: linear-gradient(135deg, rgba(139, 92, 246, 0.18), rgba(217, 119, 6, 0.12));
-    border-color: rgba(139, 92, 246, 0.4);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(139, 92, 246, 0.15);
-}}
-
-/* Buttons - Universal Hard Reset */
-button,
-button:hover,
-button:active,
-button:focus,
-button:disabled,
-.orbit-button,
-.orbit-button:hover,
-.orbit-button:active,
-.orbit-button:focus,
-.orbit-tab,
-.orbit-tab:hover,
-.orbit-tab:active,
-.orbit-tab:focus {{
-    background-image: none !important;
-    box-shadow: none !important;
-    text-shadow: none !important;
-    -gtk-icon-shadow: none !important;
-    outline: none !important;
-    border-image: none !important;
-}}
-
+/* Buttons */
 .orbit-button {{
     background: rgba(255, 255, 255, 0.05);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: {fg};
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
     padding: 6px 14px;
     font-size: 11px;
     font-weight: 700;
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.2s ease;
 }}
 
 .orbit-button:hover {{
-    background: rgba(217, 119, 6, 0.15);
-    border-color: rgba(217, 119, 6, 0.35);
-    color: #ffffff;
-}}
-
-.orbit-button:active {{
-    background: rgba(217, 119, 6, 0.25);
-    transition-duration: 0.05s;
+    background: rgba(255, 255, 255, 0.15);
+    border-color: {accent};
 }}
 
 .orbit-button.primary {{
     background: {accent};
-    border: 1px solid rgba(255, 255, 255, 0.1);
     color: #ffffff;
+    box-shadow: 0 4px 12px {separator};
 }}
 
-.orbit-button.primary:hover {{
-    background: color-mix(in srgb, {accent} 85%, white);
-    border-color: rgba(255, 255, 255, 0.2);
-}}
-
-/* Tab bar items specifically */
-.orbit-tab-bar button {{
-    background: transparent;
-    background-image: none;
-    box-shadow: none;
-    border: none;
-}}
-
-.orbit-tab {{
-    background: transparent;
-    color: rgba(255, 255, 255, 0.5);
-    border-radius: 0;
-    padding: 8px 16px;
-    border: none;
-    font-size: 12px;
-    font-weight: 600;
-    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-    min-width: 80px;
-}}
-
-.orbit-tab:hover {{
-    background: transparent !important;
-    color: rgba(255, 255, 255, 0.85);
-}}
-
-.orbit-tab.active {{
-    background: rgba(255, 255, 255, 0.15) !important;
-    border-radius: 9999px;
-    color: #ffffff;
-}}
-
-.orbit-action-btn {{
-    padding: 6px 14px;
-    font-size: 11px;
-}}
-
-/* Power Toggle - Gold when ON, Gray when OFF */
-.orbit-toggle-switch {{
-    background: rgba(100, 100, 100, 0.5);
-    border-radius: 9999px;
-}}
-
-.orbit-toggle-switch:checked {{
-    background: rgba(217, 119, 6, 0.9);
-}}
-
-.orbit-toggle-switch slider {{
-    background: #ffffff;
-    border-radius: 9999px;
-}}
-
-/* Section Headers - Gold */
+/* Section Headers */
 .orbit-section-header {{
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.1em;
     color: {gold};
-    font-weight: 700;
+    font-weight: 800;
     padding: 0 12px;
     margin-top: 8px;
     margin-bottom: 8px;
 }}
 
-/* Typography */
-.orbit-title {{
-    font-size: 18px;
-    font-weight: 700;
-    color: #ffffff;
-    letter-spacing: -0.01em;
+/* Footer */
+.orbit-footer {{
+    background: {section_bg};
+    border-top: 1px solid {separator};
+    border-radius: 0 0 16px 16px;
+    margin: 8px -8px -8px -8px;
+    padding: 20px 24px;
 }}
 
 .orbit-ssid {{
     font-weight: 600;
     font-size: 14px;
-    color: #f1f5f9;
-}}
-
-.orbit-status {{
-    font-size: 11px;
-    color: #64748b;
+    color: {fg};
 }}
 
 .orbit-detail-label {{
     font-size: 11px;
-    color: #64748b;
+    color: {fg};
+    opacity: 0.6;
 }}
 
 .orbit-detail-value {{
     font-size: 13px;
-    color: #f1f5f9;
+    color: {fg};
     font-weight: 500;
-}}
-
-.orbit-detail-icon {{
-    color: rgba(139, 92, 246, 0.6);
-}}
-
-/* Icon Styling */
-.orbit-signal-icon {{
-    color: #94a3b8;
 }}
 
 .orbit-icon-accent {{
     color: {accent};
 }}
-
-/* List Container */
-.orbit-list {{
-    background: transparent;
-}}
-
-.orbit-scrolled {{
-    background: transparent;
-}}
-
-/* Placeholder */
-.orbit-placeholder {{
-    color: rgba(255, 255, 255, 0.3);
-    padding: 40px;
-    font-size: 13px;
-}}
-
-/* Overlay Panels - Slide up from bottom */
-.orbit-details-overlay,
-.orbit-password-overlay,
-.orbit-error-overlay {{
-    background: rgba(10, 10, 15, 0.98);
-    border-radius: 16px;
-    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.8), 0 0 48px rgba(0, 0, 0, 0.5);
-    padding: 20px;
-}}
-
-.orbit-details-overlay {{
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}}
-
-.orbit-password-overlay {{
-    border: 1px solid rgba(255, 255, 255, 0.1);
-}}
-
-.orbit-password-overlay entry {{
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px 16px;
-    color: #ffffff;
-    font-size: 13px;
-}}
-
-.orbit-password-overlay entry:focus {{
-    border-color: {accent};
-    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.2);
-}}
-
-.orbit-details-row {{
-    padding: 10px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-}}
-
-.orbit-details-row:last-child {{
-    border-bottom: none;
-}}
-
-.orbit-error-overlay {{
-    background: rgba(239, 68, 68, 0.2);
-    border: 1px solid rgba(239, 68, 68, 0.4);
-    padding: 16px 20px;
-}}
-
-.orbit-error-label {{
-    color: #f87171;
-    font-size: 13px;
-}}
-
-/* Scan Button Footer */
-.orbit-footer {{
-    background: linear-gradient(to top, rgba(15, 15, 20, 1), rgba(15, 15, 20, 0.95), transparent);
-    padding: 20px 24px;
-}}
-
-/* Scrollbar */
-.orbit-scrolled scrollbar {{
-    background: transparent;
-}}
-
-.orbit-scrolled scrollbar slider {{
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 10px;
-    min-width: 4px;
-}}
-
-/* Icon Container - Violet */
-.orbit-icon-container {{
-    border-radius: 9999px;
-    background: rgba(139, 92, 246, 0.2);
-    padding: 10px;
-}}
-
-.orbit-icon-container image {{
-    -gtk-icon-size: 20px;
-}}
 "#,
+            panel_bg = panel_bg,
+            section_bg = section_bg,
+            card_bg = card_bg,
+            separator = separator,
             accent = accent,
-            gold = gold
+            gold = gold,
+            fg = fg
         )
     }
 }

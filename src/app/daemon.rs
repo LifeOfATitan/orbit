@@ -11,6 +11,7 @@ pub enum DaemonCommand {
     Show,
     Hide,
     Toggle(Option<String>),
+    ReloadTheme,
     Quit,
 }
 
@@ -21,6 +22,8 @@ impl DaemonCommand {
             Some(Self::Show)
         } else if s.starts_with("hide") {
             Some(Self::Hide)
+        } else if s.starts_with("reload-theme") {
+            Some(Self::ReloadTheme)
         } else if s.starts_with("toggle") {
             let parts: Vec<&str> = s.split(':').collect();
             let pos = if parts.len() > 1 && !parts[1].is_empty() {
@@ -40,6 +43,7 @@ impl DaemonCommand {
         match self {
             Self::Show => "show".to_string(),
             Self::Hide => "hide".to_string(),
+            Self::ReloadTheme => "reload-theme".to_string(),
             Self::Toggle(pos) => {
                 if let Some(p) = pos {
                     format!("toggle:{}", p)
