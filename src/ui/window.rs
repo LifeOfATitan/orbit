@@ -391,11 +391,13 @@ impl OrbitWindow {
     }
     
     pub fn show(&self) {
+        self.window.set_keyboard_mode(KeyboardMode::Exclusive);
         self.window.present();
     }
     
     pub fn hide(&self) {
         self.window.set_visible(false);
+        self.window.set_keyboard_mode(KeyboardMode::None);
     }
     
     pub fn network_list(&self) -> &NetworkList {

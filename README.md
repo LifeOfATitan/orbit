@@ -5,13 +5,7 @@ A native WiFi/Bluetooth manager for Wayland using Rust, GTK4, and layer-shell wi
 ## Interface Preview
 
 <p align="center">
-  <img src="screenshots/mainImage.png" width="800" alt="Orbit Main Interface">
-</p>
-
-<p align="center">
-  <img src="screenshots/wifiTab.png" width="280" alt="WiFi Tab">
-  <img src="screenshots/savedTab.png" width="280" alt="Saved Networks">
-  <img src="screenshots/bluetoothtab.png" width="280" alt="Bluetooth Tab">
+  <video src="screenshots/orbit_fs.mp4" width="800" controls alt="Orbit Main Interface">
 </p>
 
 ## Features
