@@ -108,7 +108,7 @@ impl Theme {
         let is_dark = self.get_luminance(bg) < 0.5;
         
         let section_bg_hex = self.adjust_color(bg, 0.2); 
-        let panel_bg = self.hex_to_rgba(bg, 0.91); // Requested 91% opacity
+        let panel_bg = self.hex_to_rgba(bg, 0.91);
         let section_bg = self.hex_to_rgba(&section_bg_hex, 0.94);
         let opaque_bg = self.hex_to_rgba(bg, 0.99); 
         
@@ -190,14 +190,14 @@ window {{
 .orbit-tab:hover {{
     opacity: 1.0;
     color: #ffffff;
-    background-color: {gold}; /* Match button hover colors */
+    background-color: {accent}; /* Changed from gold to accent to match connect button hover */
     border-radius: 9999px;
 }}
 
 .orbit-tab.active {{
-    background-color: rgba(255, 255, 255, 0.15) !important;
+    background-color: {accent} !important; /* Matches connect button primary color */
     border-radius: 9999px;
-    color: {fg};
+    color: #ffffff;
     opacity: 1.0;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }}
@@ -263,8 +263,8 @@ window {{
 }}
 
 .orbit-button:hover {{
-    background-color: {gold};
-    border-color: {gold};
+    background-color: {accent}; /* Changed from gold to accent to match request */
+    border-color: {accent};
     color: #ffffff;
     box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
 }}
@@ -277,7 +277,7 @@ window {{
 }}
 
 .orbit-button.primary:hover {{
-    background-color: {gold};
+    background-color: color-mix(in srgb, {accent} 80%, white); /* Slightly lighter for hover */
     color: #ffffff;
     box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }}
