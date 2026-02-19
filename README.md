@@ -110,6 +110,21 @@ Orbit is designed to look native in your bar. Add the following module to your W
     "format": "󱑫"
 }
 ```
+**Styling Waybar Module**
+
+Go to your waybar style.css file and just add this in there
+
+```css
+#custom-orbit {
+    background-color: #8b5cf6;
+    color: #ffffff;
+    padding: 6px 12px;
+    margin: 6px 3px;
+    border-radius: 4px;
+}
+```
+
+**Don't forget, depending on where you have Orbit in your waybar, change it's on-click toggle to match. Refer to the usage section above for naming**
 
 ## Configuration
 
