@@ -82,12 +82,41 @@ impl OrbitApp {
                 let tx = tx.clone();
                 
                 std::thread::spawn(move || {
-                    let nm_inst = rt.block_on(async { NetworkManager::new().await }).ok();
-                    let bt_inst = rt.block_on(async { BluetoothManager::new().await }).ok();
+                    let mut nm_inst = None;
+                    for i in 0..5 {
+                        if let Ok(inst) = rt.block_on(async { NetworkManager::new().await }) {
+                            nm_inst = Some(inst);
+                            break;
+                        }
+                        if i < 4 {
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
+                    }
+
+                    let mut bt_inst = None;
+                    for i in 0..5 {
+                        if let Ok(inst) = rt.block_on(async { BluetoothManager::new().await }) {
+                            bt_inst = Some(inst);
+                            break;
+                        }
+                        if i < 4 {
+                            std::thread::sleep(std::time::Duration::from_secs(1));
+                        }
+                    }
                     
                     if let Some(ref nm) = nm_inst {
                         if let Ok(enabled) = rt.block_on(async { nm.is_wifi_enabled().await }) {
                             let _ = tx.send_blocking(AppEvent::WifiPowerState(enabled));
+                            
+                            // Startup nudge: if enabled but not connected, trigger a scan
+                            if enabled {
+                                let active = rt.block_on(async { nm.get_active_ssid().await });
+                                if active.is_none() {
+                                    // Wait 2s for NM to settle before nudging
+                                    std::thread::sleep(std::time::Duration::from_secs(2));
+                                    let _ = rt.block_on(async { nm.scan().await });
+                                }
+                            }
                         }
                         if let Ok(aps) = rt.block_on(async { nm.get_access_points().await }) {
                             let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
@@ -638,11 +667,9 @@ fn setup_periodic_refresh(
 ) {
     glib::spawn_future_local(async move {
         loop {
-            glib::timeout_future(std::time::Duration::from_secs(10)).await;
-            
-            if !*is_visible.borrow() {
-                continue;
-            }
+            let visible = *is_visible.borrow();
+            let delay = if visible { 10 } else { 30 };
+            glib::timeout_future(std::time::Duration::from_secs(delay)).await;
             
             let nm = nm.clone();
             let bt = bt.clone();
@@ -652,8 +679,10 @@ fn setup_periodic_refresh(
             std::thread::spawn(move || {
                 let nm_guard = nm.lock().unwrap();
                 if let Some(ref nm_inst) = *nm_guard {
-                    if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                        let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                    if visible {
+                        if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
+                            let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                        }
                     }
                     if let Ok(enabled) = rt.block_on(async { nm_inst.is_wifi_enabled().await }) {
                         let _ = tx.send_blocking(AppEvent::WifiPowerState(enabled));
@@ -662,8 +691,10 @@ fn setup_periodic_refresh(
                 
                 let bt_guard = bt.lock().unwrap();
                 if let Some(ref bt_inst) = *bt_guard {
-                    if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
-                        let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                    if visible {
+                        if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
+                            let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                        }
                     }
                     if let Ok(powered) = rt.block_on(async { bt_inst.is_powered().await }) {
                         let _ = tx.send_blocking(AppEvent::BtPowerState(powered));

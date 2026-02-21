@@ -278,7 +278,7 @@ impl NetworkManager {
         Ok(reply)
     }
     
-    async fn get_active_ssid(&self) -> Option<String> {
+    pub async fn get_active_ssid(&self) -> Option<String> {
         let reply = self.conn
             .call_method(
                 Some("org.freedesktop.NetworkManager"),
