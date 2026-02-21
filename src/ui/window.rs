@@ -70,6 +70,7 @@ impl OrbitWindow {
             .build();
         
         window.init_layer_shell();
+        window.set_namespace("orbit");
         window.set_layer(Layer::Overlay);
         window.set_keyboard_mode(KeyboardMode::OnDemand);
         window.set_default_size(420, 500);
