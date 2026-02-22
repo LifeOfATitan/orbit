@@ -3,6 +3,9 @@ use gtk4::{self as gtk, Orientation};
 use gtk4_layer_shell::{LayerShell, Layer, KeyboardMode, Edge};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::path::Path;
+use std::fs;
+use gtk4::style_context_add_provider_for_display;
 
 use crate::config::Config;
 use crate::theme::Theme;
@@ -31,6 +34,7 @@ pub struct OrbitWindow {
     error_label: gtk::Label,
     theme: Rc<RefCell<Theme>>,
     css_provider: gtk4::CssProvider,
+    user_css_provider: gtk4::CssProvider,
 }
 
 impl Clone for OrbitWindow {
@@ -55,6 +59,7 @@ impl Clone for OrbitWindow {
             error_label: self.error_label.clone(),
             theme: self.theme.clone(),
             css_provider: self.css_provider.clone(),
+            user_css_provider: self.user_css_provider.clone(),
         }
     }
 }
@@ -79,11 +84,18 @@ impl OrbitWindow {
         window.add_css_class("background");
         
         let css_provider = gtk4::CssProvider::new();
+        let user_css_provider = gtk4::CssProvider::new();
         
         let display = gtk4::gdk::Display::default().expect("Failed to get default display");
         gtk4::style_context_add_provider_for_display(
             &display,
             &css_provider,
+            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+        );
+
+        gtk4::style_context_add_provider_for_display(
+            &display,
+            &user_css_provider,
             gtk4::STYLE_PROVIDER_PRIORITY_USER,
         );
 
@@ -358,6 +370,7 @@ impl OrbitWindow {
             error_label,
             theme,
             css_provider,
+            user_css_provider,
         };
 
         // Add Escape key shortcut to hide the window
@@ -390,6 +403,17 @@ impl OrbitWindow {
     pub fn apply_theme(&self) {
         let css = self.theme.borrow().generate_css();
         self.css_provider.load_from_data(&css);
+
+        if let Ok(home) = std::env::var("HOME") {
+            let user_css_path = format!("{}/.config/orbit/style.css", home);
+            let path = Path::new(&user_css_path);
+
+            if path.exists() {
+                self.user_css_provider.load_from_path(path);
+            } else {
+                self.user_css_provider.load_from_data("");
+            }
+        }
     }
     
     pub fn show(&self) {
