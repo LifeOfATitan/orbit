@@ -392,7 +392,7 @@ impl OrbitWindow {
     }
     
     pub fn show(&self) {
-        self.window.set_keyboard_mode(KeyboardMode::Exclusive);
+        self.window.set_keyboard_mode(KeyboardMode::OnDemand);
         self.window.present();
     }
     
