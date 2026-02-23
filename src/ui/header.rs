@@ -64,19 +64,19 @@ impl Header {
         
         let wifi_tab = gtk::Button::builder()
             .label("WiFi")
-            .css_classes(["orbit-tab", "flat", "active"])
+            .css_classes(["orbit-tab", "active"])
             .hexpand(true)
             .build();
         
         let saved_tab = gtk::Button::builder()
             .label("Saved")
-            .css_classes(["orbit-tab", "flat"])
+            .css_classes(["orbit-tab"])
             .hexpand(true)
             .build();
         
         let bluetooth_tab = gtk::Button::builder()
             .label("Bluetooth")
-            .css_classes(["orbit-tab", "flat"])
+            .css_classes(["orbit-tab"])
             .hexpand(true)
             .build();
         

@@ -87,7 +87,7 @@ impl OrbitWindow {
         gtk4::style_context_add_provider_for_display(
             &display,
             &css_provider,
-            gtk4::STYLE_PROVIDER_PRIORITY_APPLICATION,
+            gtk4::STYLE_PROVIDER_PRIORITY_USER,
         );
 
         gtk4::style_context_add_provider_for_display(
