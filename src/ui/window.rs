@@ -3,9 +3,6 @@ use gtk4::{self as gtk, Orientation};
 use gtk4_layer_shell::{LayerShell, Layer, KeyboardMode, Edge};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::path::Path;
-use std::fs;
-use gtk4::style_context_add_provider_for_display;
 
 use crate::config::Config;
 use crate::theme::Theme;
@@ -76,9 +73,9 @@ impl OrbitWindow {
         
         window.init_layer_shell();
         window.set_namespace("orbit");
-        window.set_exclusive_zone(0);
         window.set_layer(Layer::Overlay);
-        window.set_keyboard_mode(KeyboardMode::OnDemand);
+        window.set_keyboard_mode(KeyboardMode::None);
+        window.set_exclusive_zone(0);
         window.set_default_size(420, 500);
         
         window.add_css_class("background");
@@ -404,21 +401,18 @@ impl OrbitWindow {
         let css = self.theme.borrow().generate_css();
         self.css_provider.load_from_data(&css);
 
-        if let Ok(home) = std::env::var("HOME") {
-            let user_css_path = format!("{}/.config/orbit/style.css", home);
-            let path = Path::new(&user_css_path);
-
-            if path.exists() {
-                self.user_css_provider.load_from_path(path);
-            } else {
-                self.user_css_provider.load_from_data("");
-            }
+        let user_css_path = Theme::style_css_path();
+        if user_css_path.exists() {
+            self.user_css_provider.load_from_path(&user_css_path);
+        } else {
+            self.user_css_provider.load_from_data("");
         }
     }
     
     pub fn show(&self) {
-        self.window.set_keyboard_mode(KeyboardMode::OnDemand);
+        self.window.set_visible(true);
         self.window.present();
+        self.window.set_keyboard_mode(KeyboardMode::OnDemand);
     }
     
     pub fn hide(&self) {
