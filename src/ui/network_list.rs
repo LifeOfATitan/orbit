@@ -47,7 +47,7 @@ impl NetworkList {
         
         let scan_button = gtk::Button::builder()
             .label(" Scan for Networks")
-            .css_classes(["orbit-button", "primary"])
+            .css_classes(["orbit-button", "primary", "flat"])
             .hexpand(true)
             .build();
         
@@ -213,9 +213,9 @@ impl NetworkList {
         let action_btn = gtk::Button::builder()
             .label(action_label)
             .css_classes(if network.is_connected { 
-                vec!["orbit-button"] 
+                vec!["orbit-button", "flat"] 
             } else { 
-                vec!["orbit-button", "primary"] 
+                vec!["orbit-button", "primary", "flat"] 
             })
             .build();
         
@@ -232,7 +232,7 @@ impl NetworkList {
         if network.is_connected {
             let details_btn = gtk::Button::builder()
                 .label("Details")
-                .css_classes(["orbit-button"])
+                .css_classes(["orbit-button", "flat"])
                 .build();
             
             let ssid = network.ssid.clone();

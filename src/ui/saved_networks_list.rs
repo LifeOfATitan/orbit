@@ -47,7 +47,7 @@ impl SavedNetworksList {
         
         let refresh_button = gtk::Button::builder()
             .label(" Refresh Saved Networks")
-            .css_classes(["orbit-button", "primary"])
+            .css_classes(["orbit-button", "primary", "flat"])
             .hexpand(true)
             .build();
         
@@ -227,7 +227,7 @@ impl SavedNetworksList {
         
         let forget_btn = gtk::Button::builder()
             .label("Forget")
-            .css_classes(["orbit-button", "destructive"])
+            .css_classes(["orbit-button", "destructive", "flat"])
             .build();
         
         let path = network.path.clone();

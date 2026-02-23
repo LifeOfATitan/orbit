@@ -191,7 +191,7 @@ impl OrbitWindow {
         
         let close_btn = gtk::Button::builder()
             .label("Close")
-            .css_classes(["orbit-button", "primary"])
+            .css_classes(["orbit-button", "primary", "flat"])
             .halign(gtk::Align::Center)
             .margin_top(4)
             .build();
@@ -245,12 +245,12 @@ impl OrbitWindow {
         
         let password_cancel_btn = gtk::Button::builder()
             .label("Cancel")
-            .css_classes(["orbit-button"])
+            .css_classes(["orbit-button", "flat"])
             .build();
         
         let password_connect_btn = gtk::Button::builder()
             .label("Connect")
-            .css_classes(["orbit-button", "primary"])
+            .css_classes(["orbit-button", "primary", "flat"])
             .build();
         
         password_btn_row.append(&password_cancel_btn);
@@ -296,7 +296,7 @@ impl OrbitWindow {
         
         let error_close_btn = gtk::Button::builder()
             .label("Dismiss")
-            .css_classes(["orbit-button", "destructive"])
+            .css_classes(["orbit-button", "destructive", "flat"])
             .build();
         
         error_box.append(&error_icon);

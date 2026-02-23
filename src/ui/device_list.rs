@@ -54,7 +54,7 @@ impl DeviceList {
         
         let scan_button = gtk::Button::builder()
             .label(" Scan for Devices")
-            .css_classes(["orbit-button", "primary"])
+            .css_classes(["orbit-button", "primary", "flat"])
             .hexpand(true)
             .build();
         
@@ -228,9 +228,9 @@ impl DeviceList {
         let action_btn = gtk::Button::builder()
             .label(action_label)
             .css_classes(if device.is_connected || device.is_paired {
-                vec!["orbit-button", "primary"]
+                vec!["orbit-button", "primary", "flat"]
             } else {
-                vec!["orbit-button"]
+                vec!["orbit-button", "flat"]
             })
             .build();
         
@@ -247,7 +247,7 @@ impl DeviceList {
         if device.is_paired {
             let forget_btn = gtk::Button::builder()
                 .label("Forget")
-                .css_classes(["orbit-button", "destructive"])
+                .css_classes(["orbit-button", "destructive", "flat"])
                 .build();
             
             let path = device.path.clone();

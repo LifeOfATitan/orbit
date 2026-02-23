@@ -6,6 +6,7 @@ struct ThemeFile {
     accent_secondary: Option<String>,
     background: Option<String>,
     foreground: Option<String>,
+    destructive: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -14,6 +15,7 @@ pub struct Theme {
     pub accent_secondary: String,
     pub background: String,
     pub foreground: String,
+    pub destructive: String,
 }
 
 impl Default for Theme {
@@ -23,6 +25,7 @@ impl Default for Theme {
             accent_secondary: "#06b6d4".to_string(),
             background: "#1e1e2e".to_string(),
             foreground: "#d4d4d8".to_string(),
+            destructive: "#ef4444".to_string(),
         }
     }
 }
@@ -41,6 +44,7 @@ impl Theme {
                             if let Some(c) = theme_file.accent_secondary { theme.accent_secondary = c; }
                             if let Some(c) = theme_file.background { theme.background = c; }
                             if let Some(c) = theme_file.foreground { theme.foreground = c; }
+                            if let Some(c) = theme_file.destructive { theme.destructive = c; }
                             return theme;
                         }
                         Err(e) => {
@@ -126,282 +130,224 @@ impl Theme {
             "rgba(0, 0, 0, 0.04)".to_string()
         };
 
+        let card_hover_bg = if is_dark {
+            "rgba(255, 255, 255, 0.15)".to_string()
+        } else {
+            "rgba(0, 0, 0, 0.1)".to_string()
+        };
+
         let separator = self.hex_to_rgba(accent, 0.3);
+        let destructive = &self.destructive;
+        let destructive_separator = self.hex_to_rgba(destructive, 0.3);
+        let connected_hover_separator = self.hex_to_rgba(accent, 0.4);
+        let accent_hover = self.adjust_color(accent, 0.15);
         
         format!(r#"
 /* ========================================
-   ORBIT AGGRESSIVE RESET & THEME
+   ORBIT DYNAMIC THEME
    ======================================== */
-
-/* Nuke all default shadows and focus rings */
-* {{
-    box-shadow: none !important;
-    outline: none !important;
-    -gtk-outline-radius: inherit;
-    background-image: none !important;
-}}
 
 /* Main Panel */
 .orbit-panel {{
-    background-color: {panel_bg} !important;
-    background-image: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    background-color: {panel_bg};
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.05), transparent);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 16px;
     color: {fg};
     padding: 8px;
     margin: 0;
-    background-clip: padding-box;
 }}
 
 window {{
-    background: none !important;
-    background-color: transparent !important;
-    box-shadow: none !important;
-    border: none !important;
+    background: none;
+    background-color: transparent;
+    box-shadow: none;
+    border: none;
+    border-radius: 16px;
 }}
 
 .background {{
-    background-color: transparent !important;
-    background-image: none !important;
-    box-shadow: none !important;
+    background-color: transparent;
+    background-image: none;
+    border-radius: 16px;
 }}
 
 /* Header */
 .orbit-header {{
-    background-color: {section_bg} !important;
-    background-image: none !important;
-    border-bottom: 1px solid {separator} !important;
+    background-color: {section_bg};
+    background-image: linear-gradient(to bottom, rgba(255, 255, 255, 0.03), transparent);
+    border-bottom: 1px solid {separator};
     border-radius: 16px 16px 0 0;
     margin: -8px -8px 8px -8px;
-    padding: 16px 16px 12px 16px;
-    background-clip: padding-box;
+    padding: 16px 16px 8px 16px;
 }}
 
+/* Tabs */
 .orbit-tab-bar {{
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    border-radius: 9999px !important;
-    padding: 4px !important;
-    margin-top: 8px !important;
-    background-image: none !important;
-    box-shadow: none !important;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 9999px;
+    padding: 4px;
 }}
 
-.orbit-tab-bar button {{
-    background-image: none !important;
-    background-color: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    border-radius: 9999px !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    min-height: 32px !important;
-    min-width: 80px !important;
+.orbit-tab {{
+    background: transparent;
+    background-image: none;
+    color: {fg};
+    opacity: 0.6;
+    border: none;
+    box-shadow: none;
+    outline: none;
+    font-size: 11px;
+    font-weight: 600;
+    -gtk-icon-shadow: none;
+    text-shadow: none;
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+    min-width: 80px;
 }}
-
-.orbit-tab-bar button label {{
-    padding: 8px 16px !important;
-    margin: 0 !important;
-    color: {fg} !important;
-    font-weight: 700 !important;
-    background-image: none !important;
-    background-color: transparent !important;
-    border-radius: 9999px !important;
-    transition: all 0.2s ease !important;
-    box-shadow: none !important;
-    border: none !important;
-    -gtk-icon-shadow: none !important;
-    text-shadow: none !important;
-}}
-
-
-.orbit-tab-bar button:hover label,
-.orbit-tab-bar button.active label {{
-    background-color: {accent} !important;
-    color: #ffffff !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    border-radius: 9999px !important;
-}}
-
-
-.orbit-tab-bar button:hover label {{
-    background-color: {accent} !important;
-    color: #ffffff !important;
-    background-image: none !important;
-    box-shadow: none !important;
-}}
-
-.orbit-tab-bar button.active label {{
-    background-color: {accent} !important;
-    color: #ffffff !important;
-    background-image: none !important;
-    box-shadow: none !important;
-}}
-
-
-.orbit-tab-bar button:hover label,
-.orbit-tab-bar button.active label {{
-    background-color: {accent} !important;
-    color: #ffffff !important;
-    background-image: none !important;
-    box-shadow: none !important;
-    border: none !important;
-    border-radius: 9999px !important;
-}}
-
 
 .orbit-tab:hover {{
-    opacity: 1.0 !important;
-    color: #ffffff !important;
-    background-color: {accent} !important;
-    background-image: none !important;
+    opacity: 1.0;
+    color: #ffffff;
+    background-color: {accent};
+    background-image: none;
+    border-radius: 9999px;
+    box-shadow: none;
 }}
 
 .orbit-tab.active {{
     background-color: {accent} !important;
-    background-image: none !important;
+    background-image: none;
     border-radius: 9999px;
-    color: #ffffff !important;
-    opacity: 1.0 !important;
-    box-shadow: none !important;
+    color: #ffffff;
+    opacity: 1.0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}}
+
+/* Overlays - Opaque with padding */
+.orbit-details-overlay, 
+.orbit-password-overlay, 
+.orbit-error-overlay {{
+    background-color: {opaque_bg};
+    border: 2px solid {accent};
+    border-radius: 16px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+    color: {fg};
+    margin: 20px;
+    padding: 24px;
+}}
+
+.orbit-details-overlay label,
+.orbit-password-overlay label {{
+    color: {fg};
 }}
 
 /* Glass Cards */
 .orbit-network-row,
 .orbit-device-row,
 .orbit-saved-network-row {{
-    background-color: {card_bg} !important;
-    background-image: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.05) !important;
-    border-radius: 12px !important;
-    padding: 12px 14px !important;
-    margin: 4px 8px !important;
-    transition: all 0.2s ease !important;
-    background-clip: padding-box !important;
-    box-shadow: none !important;
+    background-color: {card_bg};
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin: 6px 8px;
+    transition: background-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.25s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }}
 
 .orbit-network-row:hover,
 .orbit-device-row:hover,
 .orbit-saved-network-row:hover {{
-    background-color: rgba(255, 255, 255, 0.1) !important;
-    border-color: {accent} !important;
-    box-shadow: none !important;
-    transform: none !important;
+    background-color: {card_hover_bg};
+    background-image: none;
+    border-color: {accent};
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }}
 
 /* Connected State */
 .orbit-network-row.connected,
 .orbit-device-row.connected,
 .orbit-saved-network-row.active {{
-    background-color: {accent} !important;
-    background-image: none !important;
-    border: 1px solid {accent} !important;
-    color: #ffffff !important;
-    box-shadow: none !important;
+    background: linear-gradient(135deg, {separator}, rgba(0,0,0,0.15));
+    border: 1px solid {accent};
+    box-shadow: 0 0 10px {separator};
 }}
 
-.orbit-network-row.connected label,
-.orbit-device-row.connected label,
-.orbit-saved-network-row.active label {{
-    color: #ffffff !important;
-}}
-
-
-.orbit-network-row:hover,
-.orbit-device-row:hover,
-.orbit-saved-network-row:hover {{
-    border-color: {accent} !important;
-    background-color: rgba(255, 255, 255, 0.12) !important;
-    background-image: none !important;
-}}
-
-.orbit-network-row.connected,
-.orbit-device-row.connected,
-.orbit-saved-network-row.active {{
-    background-color: {accent} !important;
-    background-image: none !important;
-    border: 1px solid {accent} !important;
-    border-radius: 12px !important;
-    background-clip: padding-box !important;
-    box-shadow: none !important;
-}}
-
-.orbit-network-row.connected label,
-.orbit-device-row.connected label,
-.orbit-saved-network-row.active label {{
-    color: #ffffff !important;
-}}
-
-
-.orbit-network-row.connected label,
-.orbit-device-row.connected label,
-.orbit-saved-network-row.active label {{
-    color: #ffffff !important;
+/* Connected/Active Hover State */
+.orbit-network-row.connected:hover,
+.orbit-device-row.connected:hover,
+.orbit-saved-network-row.active:hover {{
+    background: linear-gradient(135deg, {connected_hover_separator}, rgba(0,0,0,0.1));
+    border-color: {accent};
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 12px {separator};
 }}
 
 /* Buttons */
 .orbit-button {{
-    background-color: rgba(255, 255, 255, 0.08) !important;
-    background-image: none !important;
-    color: {fg} !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    background-color: rgba(255, 255, 255, 0.08);
+    background-image: none;
+    color: {fg};
+    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 9999px;
     padding: 8px 18px;
     font-size: 10px;
     font-weight: 700;
-    transition: all 0.15s ease;
-    background-clip: padding-box;
-    box-shadow: none !important;
+    box-shadow: none;
+    outline: none;
+    min-height: 0;
+    min-width: 0;
+    -gtk-icon-shadow: none;
+    text-shadow: none;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }}
 
-.orbit-button:hover,
-.orbit-network-row .orbit-button:hover,
-.orbit-device-row .orbit-button:hover {{
-    background-color: {accent} !important;
-    border-color: {accent} !important;
-    background-image: none !important;
-    color: #ffffff !important;
-    box-shadow: none !important;
+.orbit-button:hover {{
+    background-color: {accent};
+    background-image: none;
+    border-color: {accent};
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 0, 0, 0.3);
+    padding: 8px 18px;
+    min-height: 0;
+    min-width: 0;
+    outline: none;
 }}
-
-.orbit-button.primary,
-.orbit-network-row .orbit-button.primary,
-.orbit-device-row .orbit-button.primary {{
-    background-color: {accent} !important;
-    background-image: none !important;
-    color: #ffffff !important;
-    border: none !important;
-}}
-
 
 .orbit-button.primary {{
-    background-color: {accent} !important;
-    background-image: none !important;
-    border: none !important;
-    color: #ffffff !important;
+    background-color: {accent};
+    background-image: none;
+    color: #ffffff;
+    box-shadow: 0 4px 12px {separator};
+    border: 1px solid transparent;
 }}
 
 .orbit-button.primary:hover {{
-    filter: brightness(1.1) !important;
+    background-color: {accent_hover};
+    background-image: none;
+    color: #ffffff;
+    box-shadow: 0 6px 16px {separator};
+    padding: 8px 18px;
+    min-height: 0;
+    min-width: 0;
+    outline: none;
+}}
+
+/* Destructive Buttons */
+.orbit-button.destructive {{
+    background-color: {destructive};
+    background-image: none;
+    color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 4px 12px {destructive_separator};
 }}
 
 .orbit-button.destructive:hover {{
-    background-color: #ef4444 !important;
-    border-color: #ef4444 !important;
-}}
-
-/* Overlays */
-.orbit-details-overlay, 
-.orbit-password-overlay, 
-.orbit-error-overlay {{
-    background-color: {opaque_bg} !important;
-    border: 2px solid {accent} !important;
-    border-radius: 16px;
-    color: {fg} !important;
-    margin: 20px;
-    padding: 24px;
-    background-clip: padding-box;
+    background-color: shade({destructive}, 1.15);
+    background-image: none;
+    color: #ffffff;
+    box-shadow: 0 6px 16px {destructive_separator};
+    padding: 8px 18px;
+    min-height: 0;
+    min-width: 0;
+    outline: none;
 }}
 
 /* Section Headers */
@@ -409,40 +355,72 @@ window {{
     font-size: 10px;
     text-transform: uppercase;
     letter-spacing: 0.15em;
-    color: {gold} !important;
+    color: {gold};
     font-weight: 800;
     padding: 0 12px;
-    margin: 12px 0 8px 0;
+    margin-top: 12px;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}}
+
+/* Footer */
+.orbit-footer {{
+    background-color: {section_bg};
+    border-top: 1px solid {separator};
+    border-radius: 0 0 16px 16px;
+    margin: 8px -8px -8px -8px;
+    padding: 24px 28px;
 }}
 
 .orbit-ssid {{
     font-weight: 700;
     font-size: 14px;
+    color: {fg};
+}}
+
+.orbit-detail-label {{
+    font-size: 10px;
+    color: {fg};
+    opacity: 0.7;
+}}
+
+.orbit-detail-value {{
+    font-size: 12px;
+    color: {fg};
+    font-weight: 600;
+}}
+
+.orbit-icon-accent {{
+    color: {accent};
 }}
 
 /* Inputs */
 entry, password-entry {{
-    background-color: rgba(255, 255, 255, 0.05) !important;
-    background-image: none !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-    color: {fg} !important;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: {fg};
     border-radius: 12px;
     padding: 10px 14px;
-    background-clip: padding-box;
 }}
 
 entry:focus, password-entry:focus {{
-    border-color: {accent} !important;
+    border-color: {accent};
+    box-shadow: 0 0 0 1px {accent};
 }}
 "#,
             panel_bg = panel_bg,
             section_bg = section_bg,
             opaque_bg = opaque_bg,
             card_bg = card_bg,
+            card_hover_bg = card_hover_bg,
             separator = separator,
+            connected_hover_separator = connected_hover_separator,
             accent = accent,
+            accent_hover = accent_hover,
             gold = gold,
-            fg = fg
+            fg = fg,
+            destructive = destructive,
+            destructive_separator = destructive_separator
         )
     }
 }
