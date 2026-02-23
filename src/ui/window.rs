@@ -3,9 +3,6 @@ use gtk4::{self as gtk, Orientation};
 use gtk4_layer_shell::{LayerShell, Layer, KeyboardMode, Edge};
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::path::Path;
-use std::fs;
-use gtk4::style_context_add_provider_for_display;
 
 use crate::config::Config;
 use crate::theme::Theme;
@@ -404,15 +401,11 @@ impl OrbitWindow {
         let css = self.theme.borrow().generate_css();
         self.css_provider.load_from_data(&css);
 
-        if let Ok(home) = std::env::var("HOME") {
-            let user_css_path = format!("{}/.config/orbit/style.css", home);
-            let path = Path::new(&user_css_path);
-
-            if path.exists() {
-                self.user_css_provider.load_from_path(path);
-            } else {
-                self.user_css_provider.load_from_data("");
-            }
+        let user_css_path = Theme::style_css_path();
+        if user_css_path.exists() {
+            self.user_css_provider.load_from_path(&user_css_path);
+        } else {
+            self.user_css_provider.load_from_data("");
         }
     }
     

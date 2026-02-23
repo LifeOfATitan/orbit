@@ -65,6 +65,14 @@ impl Theme {
             .join("theme.toml")
     }
 
+    pub fn style_css_path() -> std::path::PathBuf {
+        let home = std::env::var("HOME").unwrap_or_else(|_| "/home/amadeus".to_string());
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("orbit")
+            .join("style.css")
+    }
+
     fn hex_to_rgb(&self, hex: &str) -> (u8, u8, u8) {
         let hex = hex.trim_start_matches('#');
         if hex.len() != 6 {
