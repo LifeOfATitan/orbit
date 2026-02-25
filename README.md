@@ -81,13 +81,16 @@ systemctl --user enable --now orbit
 
 ```bash
 # Toggle visibility (auto-anchors based on position)
-orbit toggle [top-left|top|top-right|bottom-left|bottom|bottom-right]
+orbit toggle [top-left|top-center|top-right|center-left|center|center-right|bottom-left|bottom-center|bottom-right]
 
 # Output status in JSON for Waybar
 orbit waybar-status
 
 # Manually trigger a theme reload
 orbit reload-theme
+
+# Reload config (position, margins) without restarting
+orbit reload-config
 
 # Run as daemon (handled automatically by systemd service)
 orbit daemon
@@ -130,12 +133,17 @@ Go to your waybar style.css file and just add this in there
 ### Config File (`~/.config/orbit/config.toml`)
 
 ```toml
+# Valid positions: top-left, top-center, top-right,
+#                  center-left, center, center-right,
+#                  bottom-left, bottom-center, bottom-right
 position = "top-right"
 margin_top = 10
 margin_bottom = 10
 margin_left = 10
 margin_right = 10
 ```
+
+Run `orbit reload-config` to apply changes without restarting the daemon.
 
 ### Theme File (`~/.config/orbit/theme.toml`)
 

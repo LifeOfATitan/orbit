@@ -1,0 +1,17 @@
+# Orbit Configuration
+# Copy this file to ~/.config/orbit/config.toml
+#
+# After editing, apply changes without restarting the daemon:
+#   orbit reload-config
+
+# Window position on screen
+# Valid values: top-left, top-center, top-right,
+#               center-left, center, center-right,
+#               bottom-left, bottom-center, bottom-right
+position = "top-right"
+
+# Margins (in pixels) from screen edges
+margin_top = 10
+margin_bottom = 10
+margin_left = 10
+margin_right = 10

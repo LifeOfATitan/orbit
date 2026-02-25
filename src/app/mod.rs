@@ -409,6 +409,9 @@ fn setup_events_receiver(
                             *win_theme.borrow_mut() = new_theme;
                             win.apply_theme();
                         }
+                        DaemonCommand::ReloadConfig => {
+                            win.reload_config();
+                        }
                         DaemonCommand::Quit => {
                             std::process::exit(0);
                         }

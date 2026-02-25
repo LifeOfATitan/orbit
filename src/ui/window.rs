@@ -13,7 +13,7 @@ use super::saved_networks_list::SavedNetworksList;
 
 pub struct OrbitWindow {
     window: ApplicationWindow,
-    config: Config,
+    config: Rc<RefCell<Config>>,
     header: Header,
     network_list: NetworkList,
     saved_networks_list: SavedNetworksList,
@@ -111,53 +111,8 @@ impl OrbitWindow {
             gtk4::STYLE_PROVIDER_PRIORITY_USER,
         );
 
-        let (col, row) = config.position_tuple();
-        
-        match (col, row) {
-            (0, 0) => {
-                window.set_anchor(Edge::Top, true);
-                window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Top, config.margin_top);
-                window.set_margin(Edge::Left, config.margin_left);
-            }
-            (1, 0) => {
-                window.set_anchor(Edge::Top, true);
-                window.set_margin(Edge::Top, config.margin_top);
-            }
-            (2, 0) => {
-                window.set_anchor(Edge::Top, true);
-                window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Top, config.margin_top);
-                window.set_margin(Edge::Right, config.margin_right);
-            }
-            (0, 1) => {
-                window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Left, config.margin_left);
-            }
-            (1, 1) => {}
-            (2, 1) => {
-                window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Right, config.margin_right);
-            }
-            (0, 2) => {
-                window.set_anchor(Edge::Bottom, true);
-                window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
-                window.set_margin(Edge::Left, config.margin_left);
-            }
-            (1, 2) => {
-                window.set_anchor(Edge::Bottom, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
-            }
-            (2, 2) => {
-                window.set_anchor(Edge::Bottom, true);
-                window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Bottom, config.margin_bottom);
-                window.set_margin(Edge::Right, config.margin_right);
-            }
-            _ => {}
-        }
-        
+        let config = Rc::new(RefCell::new(config));
+
         let main_box = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .css_classes(["orbit-panel"])
@@ -588,6 +543,7 @@ impl OrbitWindow {
         window.add_controller(key_controller);
         
         
+        win.apply_position();
         win.apply_theme();
         
         win
@@ -644,52 +600,74 @@ impl OrbitWindow {
         &self.window
     }
 
-    pub fn set_position(&self, position: &str) {
-        // Reset all horizontal/vertical anchors first to avoid conflicts
+    pub fn apply_position(&self) {
+        // Reset all anchors and margins
         self.window.set_anchor(Edge::Top, false);
         self.window.set_anchor(Edge::Bottom, false);
         self.window.set_anchor(Edge::Left, false);
         self.window.set_anchor(Edge::Right, false);
+        self.window.set_margin(Edge::Top, 0);
+        self.window.set_margin(Edge::Bottom, 0);
+        self.window.set_margin(Edge::Left, 0);
+        self.window.set_margin(Edge::Right, 0);
 
-        match position {
-            "top-left" => {
+        let config = self.config.borrow();
+        let (col, row) = config.position_tuple();
+
+        match (col, row) {
+            (0, 0) => {
                 self.window.set_anchor(Edge::Top, true);
                 self.window.set_anchor(Edge::Left, true);
-                self.window.set_margin(Edge::Top, self.config.margin_top);
-                self.window.set_margin(Edge::Left, self.config.margin_left);
+                self.window.set_margin(Edge::Top, config.margin_top);
+                self.window.set_margin(Edge::Left, config.margin_left);
             }
-            "top" => {
+            (1, 0) => {
                 self.window.set_anchor(Edge::Top, true);
-                self.window.set_margin(Edge::Top, self.config.margin_top);
+                self.window.set_margin(Edge::Top, config.margin_top);
             }
-            "top-right" => {
+            (2, 0) => {
                 self.window.set_anchor(Edge::Top, true);
                 self.window.set_anchor(Edge::Right, true);
-                self.window.set_margin(Edge::Top, self.config.margin_top);
-                self.window.set_margin(Edge::Right, self.config.margin_right);
+                self.window.set_margin(Edge::Top, config.margin_top);
+                self.window.set_margin(Edge::Right, config.margin_right);
             }
-            "bottom-left" => {
+            (0, 1) => {
+                self.window.set_anchor(Edge::Left, true);
+                self.window.set_margin(Edge::Left, config.margin_left);
+            }
+            (1, 1) => {}
+            (2, 1) => {
+                self.window.set_anchor(Edge::Right, true);
+                self.window.set_margin(Edge::Right, config.margin_right);
+            }
+            (0, 2) => {
                 self.window.set_anchor(Edge::Bottom, true);
                 self.window.set_anchor(Edge::Left, true);
-                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
-                self.window.set_margin(Edge::Left, self.config.margin_left);
+                self.window.set_margin(Edge::Bottom, config.margin_bottom);
+                self.window.set_margin(Edge::Left, config.margin_left);
             }
-            "bottom" => {
+            (1, 2) => {
                 self.window.set_anchor(Edge::Bottom, true);
-                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
+                self.window.set_margin(Edge::Bottom, config.margin_bottom);
             }
-            "bottom-right" => {
+            (2, 2) => {
                 self.window.set_anchor(Edge::Bottom, true);
                 self.window.set_anchor(Edge::Right, true);
-                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
-                self.window.set_margin(Edge::Right, self.config.margin_right);
+                self.window.set_margin(Edge::Bottom, config.margin_bottom);
+                self.window.set_margin(Edge::Right, config.margin_right);
             }
-            _ => {
-                // Default to top-right if unknown
-                self.window.set_anchor(Edge::Top, true);
-                self.window.set_anchor(Edge::Right, true);
-            }
+            _ => {}
         }
+    }
+
+    pub fn set_position(&self, position: &str) {
+        self.config.borrow_mut().position = position.to_string();
+        self.apply_position();
+    }
+
+    pub fn reload_config(&self) {
+        *self.config.borrow_mut() = Config::load();
+        self.apply_position();
     }
     
     pub fn show_password_dialog<F: Fn(Option<String>) + 'static>(&self, ssid: &str, callback: F) {

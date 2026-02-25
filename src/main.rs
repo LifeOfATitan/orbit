@@ -26,11 +26,13 @@ enum Commands {
     Daemon,
     /// Toggle daemon window visibility
     Toggle {
-        /// Optional position override (top-left, top, top-right)
+        /// Optional position override (top-left, top-center, top-right, center-left, center, center-right, bottom-left, bottom-center, bottom-right)
         position: Option<String>,
     },
     /// Reload theme from configuration
     ReloadTheme,
+    /// Reload config (position, margins) from config.toml
+    ReloadConfig,
     /// Output status in JSON format for Waybar
     WaybarStatus,
 }
@@ -45,6 +47,7 @@ fn main() {
         Some(Commands::Daemon) => run_daemon(config),
         Some(Commands::Toggle { position }) => toggle_daemon(position),
         Some(Commands::ReloadTheme) => reload_theme(),
+        Some(Commands::ReloadConfig) => reload_config(),
         Some(Commands::WaybarStatus) => waybar_status(),
         None => run_gui(config),
     }
@@ -96,6 +99,23 @@ fn reload_theme() {
         }
         Err(e) => {
             eprintln!("Failed to trigger theme reload: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn reload_config() {
+    if !DaemonClient::is_daemon_running() {
+        println!("Daemon not running, nothing to reload.");
+        return;
+    }
+    
+    match DaemonClient::send_command(DaemonCommand::ReloadConfig) {
+        Ok(response) => {
+            println!("Config reload triggered: {}", response);
+        }
+        Err(e) => {
+            eprintln!("Failed to trigger config reload: {}", e);
             std::process::exit(1);
         }
     }
