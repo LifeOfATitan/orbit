@@ -9,7 +9,6 @@ pub struct NetworkList {
     container: gtk::Box,
     list_box: gtk::Box,
     scan_button: gtk::Button,
-    hidden_button: gtk::Button,
     networks: Rc<RefCell<Vec<AccessPoint>>>,
     on_connect: Rc<RefCell<Option<Rc<dyn Fn(AccessPoint)>>>>,
     on_connect_hidden: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
@@ -67,7 +66,6 @@ impl NetworkList {
             container,
             list_box,
             scan_button,
-            hidden_button: hidden_button.clone(),
             networks: Rc::new(RefCell::new(Vec::new())),
             on_connect: Rc::new(RefCell::new(None)),
             on_connect_hidden: Rc::new(RefCell::new(None)),
@@ -359,10 +357,6 @@ impl NetworkList {
     
     pub fn scan_button(&self) -> &gtk::Button {
         &self.scan_button
-    }
-
-    pub fn hidden_button(&self) -> &gtk::Button {
-        &self.hidden_button
     }
     
     pub fn show_scanning(&self) {
