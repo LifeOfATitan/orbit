@@ -137,10 +137,10 @@ Go to your waybar style.css file and just add this in there
 #                  center-left, center, center-right,
 #                  bottom-left, bottom-center, bottom-right
 position = "top-right"
-margin_top = 10
-margin_bottom = 10
-margin_left = 10
-margin_right = 10
+margin-top = 10
+margin-bottom = 10
+margin-left = 10
+margin-right = 10
 ```
 
 Run `orbit reload-config` to apply changes without restarting the daemon.
