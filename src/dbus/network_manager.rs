@@ -115,7 +115,7 @@ impl NetworkManager {
         Ok(())
     }
     
-    async fn get_wireless_devices(&self) -> zbus::Result<Vec<String>> {
+    pub async fn get_wireless_devices(&self) -> zbus::Result<Vec<String>> {
         let devices: Vec<zbus::zvariant::OwnedObjectPath> = self.conn
             .call_method(
                 Some("org.freedesktop.NetworkManager"),

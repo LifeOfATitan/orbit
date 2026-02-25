@@ -297,22 +297,26 @@ fn setup_events_receiver(
                     std::thread::spawn(move || {
                         let nm_guard = nm_ref.lock().unwrap();
                         if let Some(ref nm_inst) = *nm_guard {
-                            // Find a wireless device
-                            if let Ok(devices) = rt_ref.block_on(async { nm_inst.get_access_points().await }) {
-                                if let Some(ap) = devices.first() {
-                                    let device_path = &ap.device_path;
-                                    let pwd = if password.is_empty() { None } else { Some(password.as_str()) };
-                                    match rt_ref.block_on(async { nm_inst.connect_hidden(&ssid, pwd, device_path).await }) {
-                                        Ok(()) => {
-                                            let _ = tx_ref.send_blocking(AppEvent::ConnectSuccess);
-                                            let _ = tx_ref.send_blocking(AppEvent::Notify(format!("Connecting to hidden network {}...", ssid)));
+                            // Find a physical wireless device
+                            match rt_ref.block_on(async { nm_inst.get_wireless_devices().await }) {
+                                Ok(devices) => {
+                                    if let Some(device_path) = devices.get(0) {
+                                        let pwd = if password.is_empty() { None } else { Some(password.as_str()) };
+                                        match rt_ref.block_on(async { nm_inst.connect_hidden(&ssid, pwd, device_path).await }) {
+                                            Ok(()) => {
+                                                let _ = tx_ref.send_blocking(AppEvent::ConnectSuccess);
+                                                let _ = tx_ref.send_blocking(AppEvent::Notify(format!("Connecting to hidden network {}...", ssid)));
+                                            }
+                                            Err(e) => {
+                                                let _ = tx_ref.send_blocking(AppEvent::Error(format!("Hidden connect failed: {}", e)));
+                                            }
                                         }
-                                        Err(e) => {
-                                            let _ = tx_ref.send_blocking(AppEvent::Error(format!("Hidden connect failed: {}", e)));
-                                        }
+                                    } else {
+                                        let _ = tx_ref.send_blocking(AppEvent::Error("No WiFi device found".to_string()));
                                     }
-                                } else {
-                                    let _ = tx_ref.send_blocking(AppEvent::Error("No WiFi device found".to_string()));
+                                }
+                                Err(e) => {
+                                    let _ = tx_ref.send_blocking(AppEvent::Error(format!("Failed to query WiFi devices: {}", e)));
                                 }
                             }
                         }

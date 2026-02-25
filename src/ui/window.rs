@@ -441,6 +441,35 @@ impl OrbitWindow {
             }
         });
 
+        // Enter-to-submit in hidden network entries
+        let hidden_ssid_activate = hidden_ssid_entry.clone();
+        let hidden_password_activate = hidden_password_entry.clone();
+        let hidden_callback_activate = hidden_callback.clone();
+        let hidden_revealer_activate = hidden_revealer.clone();
+        hidden_ssid_entry.connect_activate(move |_| {
+            let ssid = hidden_ssid_activate.text().to_string();
+            let pw = hidden_password_activate.text().to_string();
+            if ssid.is_empty() { return; }
+            hidden_revealer_activate.set_reveal_child(false);
+            if let Some(ref cb) = *hidden_callback_activate.borrow() {
+                cb(Some((ssid, pw)));
+            }
+        });
+
+        let hidden_ssid_activate_pw = hidden_ssid_entry.clone();
+        let hidden_password_activate_pw = hidden_password_entry.clone();
+        let hidden_callback_activate_pw = hidden_callback.clone();
+        let hidden_revealer_activate_pw = hidden_revealer.clone();
+        hidden_password_entry.connect_activate(move |_| {
+            let ssid = hidden_ssid_activate_pw.text().to_string();
+            let pw = hidden_password_activate_pw.text().to_string();
+            if ssid.is_empty() { return; }
+            hidden_revealer_activate_pw.set_reveal_child(false);
+            if let Some(ref cb) = *hidden_callback_activate_pw.borrow() {
+                cb(Some((ssid, pw)));
+            }
+        });
+
         let password_entry_clone = password_entry.clone();
         let password_callback_clone = password_callback.clone();
         let password_connect_btn_clone = password_connect_btn.clone();
