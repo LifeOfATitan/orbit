@@ -29,6 +29,7 @@ enum AppEvent {
     BtUnavailable,
     Error(String),
     Notify(String),
+    CaptivePortal(String),
     DaemonCommand(DaemonCommand),
 }
 
@@ -115,11 +116,12 @@ impl OrbitApp {
                             
                             if enabled {
                                 let active = rt.block_on(async { nm.get_active_ssid().await });
-                                if let Some(ref ssid) = active {
+                                let connected_ssid = if let Some(ref ssid) = active {
                                     // Already connected (autoconnect worked), notify
                                     let _ = tx.send_blocking(AppEvent::Notify(
                                         format!("Connected to {}", ssid)
                                     ));
+                                    Some(ssid.clone())
                                 } else {
                                     // Not connected yet — wait for NM autoconnect to kick in
                                     std::thread::sleep(std::time::Duration::from_secs(4));
@@ -128,9 +130,20 @@ impl OrbitApp {
                                         let _ = tx.send_blocking(AppEvent::Notify(
                                             format!("Connected to {}", ssid)
                                         ));
+                                        Some(ssid.clone())
                                     } else {
                                         // Still not connected, trigger a scan
                                         let _ = rt.block_on(async { nm.scan().await });
+                                        None
+                                    }
+                                };
+                                // Check for captive portal on autoconnected network
+                                if let Some(ssid) = connected_ssid {
+                                    std::thread::sleep(std::time::Duration::from_secs(2));
+                                    if let Ok(connectivity) = rt.block_on(async { nm.check_connectivity().await }) {
+                                        if connectivity == 2 {
+                                            let _ = tx.send_blocking(AppEvent::CaptivePortal(ssid));
+                                        }
                                     }
                                 }
                             }
@@ -251,6 +264,20 @@ fn setup_events_receiver(
                             .arg("--app-name=Orbit")
                             .arg("-i")
                             .arg("network-wireless")
+                            .spawn();
+                    });
+                }
+                AppEvent::CaptivePortal(ssid) => {
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("notify-send")
+                            .arg("Orbit")
+                            .arg(&format!("Captive portal detected on {} — opening login page...", ssid))
+                            .arg("--app-name=Orbit")
+                            .arg("-i")
+                            .arg("network-wireless")
+                            .spawn();
+                        let _ = std::process::Command::new("xdg-open")
+                            .arg("http://neverssl.com")
                             .spawn();
                     });
                 }
@@ -581,6 +608,13 @@ fn setup_ui_callbacks(
                                         if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
                                             let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
                                         }
+                                        // Check for captive portal
+                                        std::thread::sleep(std::time::Duration::from_secs(2));
+                                        if let Ok(connectivity) = rt.block_on(async { nm_inst.check_connectivity().await }) {
+                                            if connectivity == 2 {
+                                                let _ = tx.send_blocking(AppEvent::CaptivePortal(ssid));
+                                            }
+                                        }
                                     }
                                     Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
                                 }
@@ -601,6 +635,13 @@ fn setup_ui_callbacks(
                                 ));
                                 if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
                                     let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                                }
+                                // Check for captive portal
+                                std::thread::sleep(std::time::Duration::from_secs(2));
+                                if let Ok(connectivity) = rt.block_on(async { nm_inst.check_connectivity().await }) {
+                                    if connectivity == 2 {
+                                        let _ = tx.send_blocking(AppEvent::CaptivePortal(ssid));
+                                    }
                                 }
                             }
                             Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }

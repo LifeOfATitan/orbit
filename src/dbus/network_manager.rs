@@ -78,6 +78,23 @@ impl NetworkManager {
         Ok(())
     }
     
+    /// Force a connectivity check and return the result.
+    /// Returns: 0=Unknown, 1=None, 2=Portal, 3=Limited, 4=Full
+    pub async fn check_connectivity(&self) -> zbus::Result<u32> {
+        let reply = self.conn
+            .call_method(
+                Some("org.freedesktop.NetworkManager"),
+                "/org/freedesktop/NetworkManager",
+                Some("org.freedesktop.NetworkManager"),
+                "CheckConnectivity",
+                &(),
+            )
+            .await?
+            .body()
+            .deserialize::<u32>()?;
+        Ok(reply)
+    }
+    
     pub async fn scan(&self) -> zbus::Result<()> {
         let devices = self.get_wireless_devices().await?;
         

@@ -141,6 +141,7 @@ impl Theme {
         let destructive_separator = self.hex_to_rgba(destructive, 0.3);
         let connected_hover_separator = self.hex_to_rgba(accent, 0.4);
         let accent_hover = self.adjust_color(accent, 0.15);
+        let destructive_hover = self.adjust_color(destructive, 0.15);
         
         format!(r#"
 /* ========================================
@@ -215,7 +216,7 @@ window {{
 }}
 
 .orbit-tab.active {{
-    background-color: {accent} !important;
+    background-color: {accent};
     background-image: none;
     border-radius: 9999px;
     color: #ffffff;
@@ -348,7 +349,7 @@ window {{
 }}
 
 .orbit-button.destructive:hover {{
-    background-color: shade({destructive}, 1.15);
+    background-color: {destructive_hover};
     background-image: none;
     color: #ffffff;
     box-shadow: 0 6px 16px {destructive_separator};
@@ -513,7 +514,8 @@ entry:focus, password-entry:focus {{
             gold = gold,
             fg = fg,
             destructive = destructive,
-            destructive_separator = destructive_separator
+            destructive_separator = destructive_separator,
+            destructive_hover = destructive_hover
         )
     }
 }
