@@ -9,8 +9,10 @@ pub struct NetworkList {
     container: gtk::Box,
     list_box: gtk::Box,
     scan_button: gtk::Button,
+    hidden_button: gtk::Button,
     networks: Rc<RefCell<Vec<AccessPoint>>>,
     on_connect: Rc<RefCell<Option<Rc<dyn Fn(AccessPoint)>>>>,
+    on_connect_hidden: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
     on_details: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
     connecting_ssid: Rc<RefCell<Option<String>>>,
 }
@@ -40,6 +42,8 @@ impl NetworkList {
         container.append(&scrolled);
         
         let footer = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(8)
             .css_classes(["orbit-footer"])
             .margin_top(8)
             .build();
@@ -49,19 +53,34 @@ impl NetworkList {
             .css_classes(["orbit-button", "primary", "flat"])
             .hexpand(true)
             .build();
+
+        let hidden_button = gtk::Button::builder()
+            .label(" Hidden Network")
+            .css_classes(["orbit-button", "flat"])
+            .build();
         
         footer.append(&scan_button);
+        footer.append(&hidden_button);
         container.append(&footer);
         
         let list = Self {
             container,
             list_box,
             scan_button,
+            hidden_button: hidden_button.clone(),
             networks: Rc::new(RefCell::new(Vec::new())),
             on_connect: Rc::new(RefCell::new(None)),
+            on_connect_hidden: Rc::new(RefCell::new(None)),
             on_details: Rc::new(RefCell::new(None)),
             connecting_ssid: Rc::new(RefCell::new(None)),
         };
+
+        let on_connect_hidden_cb = list.on_connect_hidden.clone();
+        hidden_button.connect_clicked(move |_| {
+            if let Some(cb) = on_connect_hidden_cb.borrow().as_ref() {
+                cb();
+            }
+        });
         
         list.show_loading();
         list
@@ -341,6 +360,10 @@ impl NetworkList {
     pub fn scan_button(&self) -> &gtk::Button {
         &self.scan_button
     }
+
+    pub fn hidden_button(&self) -> &gtk::Button {
+        &self.hidden_button
+    }
     
     pub fn show_scanning(&self) {
         while let Some(child) = self.list_box.first_child() {
@@ -356,6 +379,10 @@ impl NetworkList {
     
     pub fn set_on_connect<F: Fn(AccessPoint) + 'static>(&self, callback: F) {
         *self.on_connect.borrow_mut() = Some(Rc::new(callback));
+    }
+    
+    pub fn set_on_connect_hidden<F: Fn() + 'static>(&self, callback: F) {
+        *self.on_connect_hidden.borrow_mut() = Some(Rc::new(callback));
     }
     
     pub fn set_on_details<F: Fn(String) + 'static>(&self, callback: F) {

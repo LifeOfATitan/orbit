@@ -24,6 +24,7 @@ enum AppEvent {
     BtPowerState(bool),
     ConnectStarted(String),
     ConnectSuccess,
+    ConnectHidden(String, String),
     BtActionStarted(String, DeviceAction),
     BtActionComplete,
     BtUnavailable,
@@ -287,6 +288,35 @@ fn setup_events_receiver(
                 AppEvent::ConnectSuccess => {
                     win.network_list().set_connecting_ssid(None);
                     win.hide_password_dialog();
+                }
+                AppEvent::ConnectHidden(ssid, password) => {
+                    let nm_ref = nm.clone();
+                    let rt_ref = rt.clone();
+                    let tx_ref = tx.clone();
+                    
+                    std::thread::spawn(move || {
+                        let nm_guard = nm_ref.lock().unwrap();
+                        if let Some(ref nm_inst) = *nm_guard {
+                            // Find a wireless device
+                            if let Ok(devices) = rt_ref.block_on(async { nm_inst.get_access_points().await }) {
+                                if let Some(ap) = devices.first() {
+                                    let device_path = &ap.device_path;
+                                    let pwd = if password.is_empty() { None } else { Some(password.as_str()) };
+                                    match rt_ref.block_on(async { nm_inst.connect_hidden(&ssid, pwd, device_path).await }) {
+                                        Ok(()) => {
+                                            let _ = tx_ref.send_blocking(AppEvent::ConnectSuccess);
+                                            let _ = tx_ref.send_blocking(AppEvent::Notify(format!("Connecting to hidden network {}...", ssid)));
+                                        }
+                                        Err(e) => {
+                                            let _ = tx_ref.send_blocking(AppEvent::Error(format!("Hidden connect failed: {}", e)));
+                                        }
+                                    }
+                                } else {
+                                    let _ = tx_ref.send_blocking(AppEvent::Error("No WiFi device found".to_string()));
+                                }
+                            }
+                        }
+                    });
                 }
                 AppEvent::BtActionStarted(path, action) => {
                     win.device_list().set_action_state(Some(path), Some(action));
@@ -559,6 +589,17 @@ fn setup_ui_callbacks(
     let rt_conn = rt.clone();
     let tx_conn = tx.clone();
     let win_conn = win.clone();
+    let tx_conn_hidden = tx.clone();
+    let win_conn_hidden = win.clone();
+    win.network_list().set_on_connect_hidden(move || {
+        let tx = tx_conn_hidden.clone();
+        win_conn_hidden.show_hidden_dialog(move |data| {
+            if let Some((ssid, password)) = data {
+                let _ = tx.send_blocking(AppEvent::ConnectHidden(ssid, password));
+            }
+        });
+    });
+
     win.network_list().set_on_connect(move |ap: AccessPoint| {
         let nm = nm_conn.clone();
         let rt = rt_conn.clone();

@@ -1,5 +1,20 @@
-use zbus::Connection;
+use zbus::{Connection, interface};
 use std::collections::HashMap;
+
+struct BluetoothAgent;
+
+#[interface(name = "org.bluez.Agent1")]
+impl BluetoothAgent {
+    async fn release(&self) {}
+    async fn request_pin_code(&self, _device: zbus::zvariant::ObjectPath<'_>) -> String { String::new() }
+    async fn display_pin_code(&self, _device: zbus::zvariant::ObjectPath<'_>, _pincode: String) {}
+    async fn request_passkey(&self, _device: zbus::zvariant::ObjectPath<'_>) -> u32 { 0 }
+    async fn display_passkey(&self, _device: zbus::zvariant::ObjectPath<'_>, _passkey: u32, _entered: u16) {}
+    async fn request_confirmation(&self, _device: zbus::zvariant::ObjectPath<'_>, _passkey: u32) {}
+    async fn request_authorization(&self, _device: zbus::zvariant::ObjectPath<'_>) {}
+    async fn authorize_service(&self, _device: zbus::zvariant::ObjectPath<'_>, _uuid: String) {}
+    async fn cancel(&self) {}
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum DeviceType {
@@ -61,7 +76,35 @@ impl BluetoothManager {
     pub async fn new() -> zbus::Result<Self> {
         let conn = Connection::system().await?;
         let adapter_path = Self::find_adapter(&conn).await;
-        Ok(Self { conn, adapter_path })
+        let manager = Self { conn, adapter_path };
+        
+        // Register agent for auto-confirmation
+        let _ = manager.register_agent().await;
+        
+        Ok(manager)
+    }
+
+    async fn register_agent(&self) -> zbus::Result<()> {
+        let agent_path = "/com/orbit/agent";
+        self.conn.object_server().at(agent_path, BluetoothAgent).await?;
+
+        let _ : () = self.conn.call_method(
+            Some("org.bluez"),
+            "/org/bluez",
+            Some("org.bluez.AgentManager1"),
+            "RegisterAgent",
+            &(zbus::zvariant::ObjectPath::try_from(agent_path)?, "NoInputNoOutput"),
+        ).await?.body().deserialize()?;
+
+        let _ : () = self.conn.call_method(
+            Some("org.bluez"),
+            "/org/bluez",
+            Some("org.bluez.AgentManager1"),
+            "RequestDefaultAgent",
+            &(zbus::zvariant::ObjectPath::try_from(agent_path)?),
+        ).await?.body().deserialize()?;
+
+        Ok(())
     }
     
     async fn find_adapter(conn: &Connection) -> Option<String> {

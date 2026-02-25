@@ -364,6 +364,54 @@ impl NetworkManager {
         
         Err(zbus::Error::Address("Connection timeout".to_string()))
     }
+
+    pub async fn connect_hidden(&self, ssid: &str, password: Option<&str>, device_path: &str) -> zbus::Result<()> {
+        let mut connection: HashMap<&str, zbus::zvariant::Value> = HashMap::new();
+        connection.insert("type", "802-11-wireless".into());
+        connection.insert("id", ssid.into());
+        connection.insert("uuid", zbus::zvariant::Value::Str(uuid::Uuid::new_v4().to_string().into()));
+        connection.insert("autoconnect", true.into());
+        
+        let mut wireless: HashMap<&str, zbus::zvariant::Value> = HashMap::new();
+        wireless.insert("ssid", ssid.as_bytes().into());
+        wireless.insert("mode", "infrastructure".into());
+        wireless.insert("hidden", true.into()); // The key part for hidden networks
+        
+        let mut config: HashMap<&str, HashMap<&str, zbus::zvariant::Value>> = HashMap::new();
+        config.insert("connection", connection);
+        config.insert("802-11-wireless", wireless);
+        
+        if let Some(pwd) = password {
+            let mut wsec: HashMap<&str, zbus::zvariant::Value> = HashMap::new();
+            wsec.insert("key-mgmt", "wpa-psk".into());
+            wsec.insert("auth-alg", "open".into());
+            wsec.insert("psk", pwd.into());
+            config.insert("802-11-wireless-security", wsec);
+        }
+        
+        let mut ipv4: HashMap<&str, zbus::zvariant::Value> = HashMap::new();
+        ipv4.insert("method", "auto".into());
+        config.insert("ipv4", ipv4);
+        
+        let mut ipv6: HashMap<&str, zbus::zvariant::Value> = HashMap::new();
+        ipv6.insert("method", "ignore".into());
+        config.insert("ipv6", ipv6);
+        
+        let dev_path: zbus::zvariant::ObjectPath = device_path.try_into()
+            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+        
+        self.conn
+            .call_method(
+                Some("org.freedesktop.NetworkManager"),
+                "/org/freedesktop/NetworkManager",
+                Some("org.freedesktop.NetworkManager"),
+                "AddAndActivateConnection",
+                &(&config, &dev_path, "/"),
+            )
+            .await?;
+        
+        Ok(())
+    }
     
     pub async fn disconnect(&self) -> zbus::Result<()> {
         let reply = self.conn

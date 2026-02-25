@@ -29,6 +29,10 @@ pub struct OrbitWindow {
     password_error_label: gtk::Label,
     password_connect_btn: gtk::Button,
     password_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<String>)>>>>,
+    hidden_revealer: gtk::Revealer,
+    hidden_ssid_entry: gtk::Entry,
+    hidden_password_entry: gtk::PasswordEntry,
+    hidden_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<(String, String)>)>>>>,
     error_revealer: gtk::Revealer,
     error_box: gtk::Box,
     error_label: gtk::Label,
@@ -57,6 +61,10 @@ impl Clone for OrbitWindow {
             password_error_label: self.password_error_label.clone(),
             password_connect_btn: self.password_connect_btn.clone(),
             password_callback: self.password_callback.clone(),
+            hidden_revealer: self.hidden_revealer.clone(),
+            hidden_ssid_entry: self.hidden_ssid_entry.clone(),
+            hidden_password_entry: self.hidden_password_entry.clone(),
+            hidden_callback: self.hidden_callback.clone(),
             error_revealer: self.error_revealer.clone(),
             error_box: self.error_box.clone(),
             error_label: self.error_label.clone(),
@@ -288,6 +296,68 @@ impl OrbitWindow {
             .build();
         
         overlay.add_overlay(&password_revealer);
+
+        let hidden_box = gtk::Box::builder()
+            .orientation(Orientation::Vertical)
+            .spacing(12)
+            .css_classes(["orbit-password-overlay"])
+            .margin_start(16)
+            .margin_end(16)
+            .margin_top(16)
+            .margin_bottom(16)
+            .build();
+        
+        let hidden_label = gtk::Label::builder()
+            .label("Connect to Hidden Network:")
+            .css_classes(["orbit-detail-label"])
+            .halign(gtk::Align::Start)
+            .build();
+        
+        let hidden_ssid_entry = gtk::Entry::builder()
+            .placeholder_text("Network SSID")
+            .hexpand(true)
+            .build();
+
+        let hidden_password_entry = gtk::PasswordEntry::builder()
+            .placeholder_text("Password (optional)")
+            .show_peek_icon(true)
+            .hexpand(true)
+            .build();
+        
+        let hidden_btn_row = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(8)
+            .halign(gtk::Align::End)
+            .build();
+        
+        let hidden_cancel_btn = gtk::Button::builder()
+            .label("Cancel")
+            .css_classes(["orbit-button", "flat"])
+            .build();
+        
+        let hidden_connect_btn = gtk::Button::builder()
+            .label("Connect")
+            .css_classes(["orbit-button", "primary", "flat"])
+            .build();
+        
+        hidden_btn_row.append(&hidden_cancel_btn);
+        hidden_btn_row.append(&hidden_connect_btn);
+        
+        hidden_box.append(&hidden_label);
+        hidden_box.append(&hidden_ssid_entry);
+        hidden_box.append(&hidden_password_entry);
+        hidden_box.append(&hidden_btn_row);
+        
+        let hidden_revealer = gtk::Revealer::builder()
+            .child(&hidden_box)
+            .reveal_child(false)
+            .transition_type(gtk::RevealerTransitionType::SlideUp)
+            .transition_duration(250)
+            .valign(gtk::Align::End)
+            .can_target(true)
+            .build();
+        
+        overlay.add_overlay(&hidden_revealer);
         
         let error_box = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
@@ -340,7 +410,37 @@ impl OrbitWindow {
         window.set_child(Some(&overlay));
         
         let password_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<String>)>>>> = Rc::new(RefCell::new(None));
-        
+        let hidden_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<(String, String)>)>>>> = Rc::new(RefCell::new(None));
+
+        let hidden_ssid_entry_clone = hidden_ssid_entry.clone();
+        let hidden_password_entry_clone = hidden_password_entry.clone();
+        let hidden_callback_clone = hidden_callback.clone();
+        let hidden_revealer_clone = hidden_revealer.clone();
+        hidden_connect_btn.connect_clicked(move |_| {
+            let ssid = hidden_ssid_entry_clone.text().to_string();
+            let pw = hidden_password_entry_clone.text().to_string();
+            if ssid.is_empty() {
+                return;
+            }
+            hidden_revealer_clone.set_reveal_child(false);
+            if let Some(ref cb) = *hidden_callback_clone.borrow() {
+                cb(Some((ssid, pw)));
+            }
+        });
+
+        let hidden_ssid_entry_cancel = hidden_ssid_entry.clone();
+        let hidden_password_entry_cancel = hidden_password_entry.clone();
+        let hidden_callback_cancel = hidden_callback.clone();
+        let hidden_revealer_cancel = hidden_revealer.clone();
+        hidden_cancel_btn.connect_clicked(move |_| {
+            hidden_ssid_entry_cancel.set_text("");
+            hidden_password_entry_cancel.set_text("");
+            hidden_revealer_cancel.set_reveal_child(false);
+            if let Some(cb) = hidden_callback_cancel.borrow_mut().take() {
+                cb(None);
+            }
+        });
+
         let password_entry_clone = password_entry.clone();
         let password_callback_clone = password_callback.clone();
         let password_connect_btn_clone = password_connect_btn.clone();
@@ -415,6 +515,10 @@ impl OrbitWindow {
             password_error_label,
             password_connect_btn: password_connect_btn.clone(),
             password_callback,
+            hidden_revealer,
+            hidden_ssid_entry,
+            hidden_password_entry,
+            hidden_callback,
             error_revealer,
             error_box,
             error_label,
@@ -434,6 +538,8 @@ impl OrbitWindow {
                     win_clone.details_revealer.set_reveal_child(false);
                 } else if win_clone.password_revealer.reveals_child() {
                     win_clone.hide_password_dialog();
+                } else if win_clone.hidden_revealer.reveals_child() {
+                    win_clone.hidden_revealer.set_reveal_child(false);
                 } else if win_clone.error_revealer.reveals_child() {
                     win_clone.error_revealer.set_reveal_child(false);
                 } else {
@@ -578,6 +684,17 @@ impl OrbitWindow {
         self.password_connect_btn.set_sensitive(true);
         self.password_revealer.set_reveal_child(false);
         *self.password_callback.borrow_mut() = None;
+    }
+
+    pub fn show_hidden_dialog<F: Fn(Option<(String, String)>) + 'static>(&self, callback: F) {
+        self.details_revealer.set_reveal_child(false);
+        self.password_revealer.set_reveal_child(false);
+        self.error_revealer.set_reveal_child(false);
+        self.hidden_ssid_entry.set_text("");
+        self.hidden_password_entry.set_text("");
+        *self.hidden_callback.borrow_mut() = Some(Rc::new(callback));
+        self.hidden_revealer.set_reveal_child(true);
+        self.hidden_ssid_entry.grab_focus();
     }
     
     pub fn show_password_error(&self, message: &str) {
