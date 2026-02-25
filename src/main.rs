@@ -150,6 +150,7 @@ fn list_networks() {
                                 dbus::SecurityType::WEP => "WEP",
                                 dbus::SecurityType::WPA => "WPA",
                                 dbus::SecurityType::WPA2 => "WPA2",
+                                dbus::SecurityType::WPA3 => "WPA3",
                             };
                             let connected = if ap.is_connected { " [Connected]" } else { "" };
                             println!("  {} ({}%) {}{}", ap.ssid, ap.signal_strength, security, connected);

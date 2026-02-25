@@ -14,6 +14,7 @@ pub struct NetworkList {
     on_connect_hidden: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
     on_details: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
     connecting_ssid: Rc<RefCell<Option<String>>>,
+    disconnecting_ssid: Rc<RefCell<Option<String>>>,
 }
 
 impl NetworkList {
@@ -71,6 +72,7 @@ impl NetworkList {
             on_connect_hidden: Rc::new(RefCell::new(None)),
             on_details: Rc::new(RefCell::new(None)),
             connecting_ssid: Rc::new(RefCell::new(None)),
+            disconnecting_ssid: Rc::new(RefCell::new(None)),
         };
 
         let on_connect_hidden_cb = list.on_connect_hidden.clone();
@@ -109,7 +111,6 @@ impl NetworkList {
         }
     }
     
-    /// Build a 4-bar signal-strength widget using plain GTK boxes (no icon theme).
     fn build_signal_bars(strength: u8, is_connected: bool) -> gtk::Box {
         let active_bars = Self::signal_bar_count(strength);
         let heights = [4, 8, 12, 16];
@@ -149,7 +150,14 @@ impl NetworkList {
     
     pub fn set_connecting_ssid(&self, ssid: Option<String>) {
         *self.connecting_ssid.borrow_mut() = ssid;
-        // Re-render the list with current networks to reflect state change
+        let networks = self.networks.borrow().clone();
+        if !networks.is_empty() {
+            self.render_networks(&networks);
+        }
+    }
+    
+    pub fn set_disconnecting_ssid(&self, ssid: Option<String>) {
+        *self.disconnecting_ssid.borrow_mut() = ssid;
         let networks = self.networks.borrow().clone();
         if !networks.is_empty() {
             self.render_networks(&networks);
@@ -158,8 +166,8 @@ impl NetworkList {
     
     pub fn set_networks(&self, networks: Vec<AccessPoint>) {
         *self.networks.borrow_mut() = networks.clone();
-        // Clear connecting state when network list refreshes (connection completed)
         *self.connecting_ssid.borrow_mut() = None;
+        *self.disconnecting_ssid.borrow_mut() = None;
         self.render_networks(&networks);
     }
     
@@ -219,7 +227,6 @@ impl NetworkList {
             .focusable(true)
             .build();
         
-        // Visual focus feedback
         let row_focus = row.clone();
         let focus_in = gtk::EventControllerFocus::new();
         focus_in.connect_enter(move |_| {
@@ -295,9 +302,13 @@ impl NetworkList {
         }
         
         let is_connecting = self.connecting_ssid.borrow().as_deref() == Some(&network.ssid);
+        let is_disconnecting = self.disconnecting_ssid.borrow().as_deref() == Some(&network.ssid);
         let any_connecting = self.connecting_ssid.borrow().is_some();
+        let any_disconnecting = self.disconnecting_ssid.borrow().is_some();
         
-        let action_label = if network.is_connected {
+        let action_label = if is_disconnecting {
+            "Disconnecting..."
+        } else if network.is_connected {
             "Disconnect"
         } else if is_connecting {
             "Connecting..."
@@ -310,14 +321,14 @@ impl NetworkList {
         } else { 
             vec!["orbit-button", "primary", "flat"] 
         };
-        if is_connecting {
+        if is_connecting || is_disconnecting {
             btn_classes.push("connecting");
         }
         
         let action_btn = gtk::Button::builder()
             .label(action_label)
             .css_classes(btn_classes)
-            .sensitive(!is_connecting && !(any_connecting && !network.is_connected))
+            .sensitive(!is_connecting && !is_disconnecting && !(any_connecting && !network.is_connected) && !(any_disconnecting && network.is_connected))
             .build();
         
         let network_clone = network.clone();

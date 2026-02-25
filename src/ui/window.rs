@@ -801,8 +801,7 @@ fn sanitize_error_message(message: &str) -> String {
     } else if msg_lower.contains("timeout") || msg_lower.contains("timed out") {
         "Connection timed out. Please try again.".to_string()
     } else if (msg_lower.contains("type") && msg_lower.contains("does not match"))
-        || msg_lower.contains("a{sa{sv}}") || msg_lower.contains("dbus") 
-        || msg_lower.contains("org.freedesktop") {
+        || msg_lower.contains("a{sa{sv}}") {
         "Operation failed. Please try again.".to_string()
     } else if msg_lower.contains("rejected") || msg_lower.contains("auth") {
         "Authentication failed. Check your password.".to_string()

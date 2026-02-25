@@ -25,6 +25,7 @@ enum AppEvent {
     ConnectStarted(String),
     ConnectSuccess,
     ConnectHidden(String, String),
+    DisconnectStarted(String),
     BtActionStarted(String, DeviceAction),
     BtActionComplete,
     BtUnavailable,
@@ -285,8 +286,12 @@ fn setup_events_receiver(
                 AppEvent::ConnectStarted(ssid) => {
                     win.network_list().set_connecting_ssid(Some(ssid));
                 }
+                AppEvent::DisconnectStarted(ssid) => {
+                    win.network_list().set_disconnecting_ssid(Some(ssid));
+                }
                 AppEvent::ConnectSuccess => {
                     win.network_list().set_connecting_ssid(None);
+                    win.network_list().set_disconnecting_ssid(None);
                     win.hide_password_dialog();
                 }
                 AppEvent::ConnectHidden(ssid, password) => {
@@ -615,11 +620,16 @@ fn setup_ui_callbacks(
         let ssid = ap.ssid.clone();
         
         if ap.is_connected {
+            let ap_path = ap.path.clone();
+            let ssid = ap.ssid.clone();
+            let _ = tx.send_blocking(AppEvent::DisconnectStarted(ssid.clone()));
             std::thread::spawn(move || {
                 let nm_guard = nm.lock().unwrap();
                 if let Some(ref nm_inst) = *nm_guard {
-                    match rt.block_on(async { nm_inst.disconnect().await }) {
+                    match rt.block_on(async { nm_inst.disconnect_ap(&ssid, &ap_path).await }) {
                         Ok(()) => {
+                            // Perceptible delay for animation
+                            std::thread::sleep(std::time::Duration::from_millis(800));
                             if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
                                 let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
                             }
@@ -637,39 +647,65 @@ fn setup_ui_callbacks(
                 let rt_dialog = rt.clone();
                 let ssid_dialog = ssid.clone();
                 let ap_path_dialog = ap_path.clone();
-                win_conn.show_password_dialog(&ssid, move |password| {
-                    if let Some(pwd) = password {
-                        let tx = tx_dialog.clone();
-                        let nm = nm_dialog.clone();
-                        let rt = rt_dialog.clone();
-                        let ssid = ssid_dialog.clone();
-                        let ap_path = ap_path_dialog.clone();
-                        std::thread::spawn(move || {
-                            let nm_guard = nm.lock().unwrap();
-                            if let Some(ref nm_inst) = *nm_guard {
-                                match rt.block_on(async { nm_inst.connect(&ssid, Some(&pwd), &ap_path).await }) {
-                                    Ok(()) => {
-                                        let _ = tx.send_blocking(AppEvent::ConnectSuccess);
-                                        let _ = tx.send_blocking(AppEvent::Notify(
-                                            format!("Connected to {}", ssid)
-                                        ));
-                                        if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                                            let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
-                                        }
-                                        // Check for captive portal
-                                        std::thread::sleep(std::time::Duration::from_secs(2));
-                                        if let Ok(connectivity) = rt.block_on(async { nm_inst.check_connectivity().await }) {
-                                            if connectivity == 2 {
-                                                let _ = tx.send_blocking(AppEvent::CaptivePortal(ssid));
-                                            }
-                                        }
+
+                // Check if we already have a saved connection for this SSID
+                let has_saved = {
+                    let nm_guard = nm_dialog.lock().unwrap();
+                    if let Some(ref nm_inst) = *nm_guard {
+                        rt_dialog.block_on(async { nm_inst.has_saved_connection(&ssid_dialog).await })
+                    } else {
+                        false
+                    }
+                };
+
+                if has_saved {
+                    // One-click reconnect for saved networks
+                    let _ = tx_dialog.send_blocking(AppEvent::ConnectStarted(ssid_dialog.clone()));
+                    std::thread::spawn(move || {
+                        let nm_guard = nm_dialog.lock().unwrap();
+                        if let Some(ref nm_inst) = *nm_guard {
+                            match rt_dialog.block_on(async { nm_inst.connect(&ssid_dialog, None, &ap_path_dialog).await }) {
+                                Ok(()) => {
+                                    let _ = tx_dialog.send_blocking(AppEvent::ConnectSuccess);
+                                    let _ = tx_dialog.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid_dialog)));
+                                    if let Ok(aps) = rt_dialog.block_on(async { nm_inst.get_access_points().await }) {
+                                        let _ = tx_dialog.send_blocking(AppEvent::WifiScanResult(aps));
                                     }
-                                    Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
+                                }
+                                Err(e) => {
+                                    let _ = tx_dialog.send_blocking(AppEvent::Error(format!("Connect failed: {}", e)));
                                 }
                             }
-                        });
-                    }
-                });
+                        }
+                    });
+                } else {
+                    win_conn.show_password_dialog(&ssid, move |password| {
+                        if let Some(pwd) = password {
+                            let tx = tx_dialog.clone();
+                            let nm = nm_dialog.clone();
+                            let rt = rt_dialog.clone();
+                            let ssid = ssid_dialog.clone();
+                            let ap_path = ap_path_dialog.clone();
+                            std::thread::spawn(move || {
+                                let nm_guard = nm.lock().unwrap();
+                                if let Some(ref nm_inst) = *nm_guard {
+                                    match rt.block_on(async { nm_inst.connect(&ssid, Some(&pwd), &ap_path).await }) {
+                                        Ok(()) => {
+                                            let _ = tx.send_blocking(AppEvent::ConnectSuccess);
+                                            let _ = tx.send_blocking(AppEvent::Notify(
+                                                format!("Connected to {}", ssid)
+                                            ));
+                                            if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
+                                                let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                                            }
+                                        }
+                                        Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
+                                    }
+                                }
+                            });
+                        }
+                    });
+                }
             } else {
                 let _ = tx.send_blocking(AppEvent::ConnectStarted(ssid.clone()));
                 std::thread::spawn(move || {
