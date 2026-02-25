@@ -13,6 +13,7 @@ use super::saved_networks_list::SavedNetworksList;
 
 pub struct OrbitWindow {
     window: ApplicationWindow,
+    config: Config,
     header: Header,
     network_list: NetworkList,
     saved_networks_list: SavedNetworksList,
@@ -25,7 +26,9 @@ pub struct OrbitWindow {
     password_box: gtk::Box,
     password_entry: gtk::PasswordEntry,
     password_label: gtk::Label,
-    password_callback: Rc<RefCell<Option<Box<dyn Fn(Option<String>)>>>>,
+    password_error_label: gtk::Label,
+    password_connect_btn: gtk::Button,
+    password_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<String>)>>>>,
     error_revealer: gtk::Revealer,
     error_box: gtk::Box,
     error_label: gtk::Label,
@@ -38,6 +41,7 @@ impl Clone for OrbitWindow {
     fn clone(&self) -> Self {
         Self {
             window: self.window.clone(),
+            config: self.config.clone(),
             header: self.header.clone(),
             network_list: self.network_list.clone(),
             saved_networks_list: self.saved_networks_list.clone(),
@@ -50,6 +54,8 @@ impl Clone for OrbitWindow {
             password_box: self.password_box.clone(),
             password_entry: self.password_entry.clone(),
             password_label: self.password_label.clone(),
+            password_error_label: self.password_error_label.clone(),
+            password_connect_btn: self.password_connect_btn.clone(),
             password_callback: self.password_callback.clone(),
             error_revealer: self.error_revealer.clone(),
             error_box: self.error_box.clone(),
@@ -57,6 +63,7 @@ impl Clone for OrbitWindow {
             theme: self.theme.clone(),
             css_provider: self.css_provider.clone(),
             user_css_provider: self.user_css_provider.clone(),
+
         }
     }
 }
@@ -102,43 +109,43 @@ impl OrbitWindow {
             (0, 0) => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Top, 10);
-                window.set_margin(Edge::Left, 10);
+                window.set_margin(Edge::Top, config.margin_top);
+                window.set_margin(Edge::Left, config.margin_left);
             }
             (1, 0) => {
                 window.set_anchor(Edge::Top, true);
-                window.set_margin(Edge::Top, 10);
+                window.set_margin(Edge::Top, config.margin_top);
             }
             (2, 0) => {
                 window.set_anchor(Edge::Top, true);
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Top, 10);
-                window.set_margin(Edge::Right, 10);
+                window.set_margin(Edge::Top, config.margin_top);
+                window.set_margin(Edge::Right, config.margin_right);
             }
             (0, 1) => {
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Left, 10);
+                window.set_margin(Edge::Left, config.margin_left);
             }
             (1, 1) => {}
             (2, 1) => {
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Right, 10);
+                window.set_margin(Edge::Right, config.margin_right);
             }
             (0, 2) => {
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Left, true);
-                window.set_margin(Edge::Bottom, 10);
-                window.set_margin(Edge::Left, 10);
+                window.set_margin(Edge::Bottom, config.margin_bottom);
+                window.set_margin(Edge::Left, config.margin_left);
             }
             (1, 2) => {
                 window.set_anchor(Edge::Bottom, true);
-                window.set_margin(Edge::Bottom, 10);
+                window.set_margin(Edge::Bottom, config.margin_bottom);
             }
             (2, 2) => {
                 window.set_anchor(Edge::Bottom, true);
                 window.set_anchor(Edge::Right, true);
-                window.set_margin(Edge::Bottom, 10);
-                window.set_margin(Edge::Right, 10);
+                window.set_margin(Edge::Bottom, config.margin_bottom);
+                window.set_margin(Edge::Right, config.margin_right);
             }
             _ => {}
         }
@@ -237,6 +244,16 @@ impl OrbitWindow {
             .hexpand(true)
             .build();
         
+        let password_error_label = gtk::Label::builder()
+            .label("")
+            .css_classes(["orbit-password-error"])
+            .halign(gtk::Align::Start)
+            .wrap(true)
+            .wrap_mode(gtk::pango::WrapMode::WordChar)
+            .max_width_chars(40)
+            .visible(false)
+            .build();
+        
         let password_btn_row = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(8)
@@ -258,6 +275,7 @@ impl OrbitWindow {
         
         password_box.append(&password_label);
         password_box.append(&password_entry);
+        password_box.append(&password_error_label);
         password_box.append(&password_btn_row);
         
         let password_revealer = gtk::Revealer::builder()
@@ -321,34 +339,67 @@ impl OrbitWindow {
         
         window.set_child(Some(&overlay));
         
-        let password_callback: Rc<RefCell<Option<Box<dyn Fn(Option<String>)>>>> = Rc::new(RefCell::new(None));
+        let password_callback: Rc<RefCell<Option<Rc<dyn Fn(Option<String>)>>>> = Rc::new(RefCell::new(None));
         
-        let password_revealer_clone = password_revealer.clone();
         let password_entry_clone = password_entry.clone();
         let password_callback_clone = password_callback.clone();
+        let password_connect_btn_clone = password_connect_btn.clone();
+        let password_error_label_clone = password_error_label.clone();
         password_connect_btn.connect_clicked(move |_| {
             let pw = password_entry_clone.text().to_string();
-            let password = if pw.is_empty() { None } else { Some(pw) };
-            password_entry_clone.set_text("");
-            password_revealer_clone.set_reveal_child(false);
-            if let Some(cb) = password_callback_clone.borrow_mut().take() {
-                cb(password);
+            if pw.is_empty() {
+                password_error_label_clone.set_label("Password cannot be empty");
+                password_error_label_clone.set_visible(true);
+                return;
+            }
+            // Set connecting state - don't close dialog
+            password_connect_btn_clone.set_label("Connecting...");
+            password_connect_btn_clone.set_sensitive(false);
+            password_error_label_clone.set_visible(false);
+            if let Some(ref cb) = *password_callback_clone.borrow() {
+                cb(Some(pw));
             }
         });
         
         let password_revealer_clone2 = password_revealer.clone();
         let password_entry_clone2 = password_entry.clone();
         let password_callback_clone2 = password_callback.clone();
+        let password_error_label_clone2 = password_error_label.clone();
+        let password_connect_btn_clone2 = password_connect_btn.clone();
         password_cancel_btn.connect_clicked(move |_| {
             password_entry_clone2.set_text("");
             password_revealer_clone2.set_reveal_child(false);
+            password_error_label_clone2.set_visible(false);
+            password_connect_btn_clone2.set_label("Connect");
+            password_connect_btn_clone2.set_sensitive(true);
             if let Some(cb) = password_callback_clone2.borrow_mut().take() {
                 cb(None);
             }
         });
         
+        // Enter-to-submit in password entry
+        let password_entry_activate = password_entry.clone();
+        let password_callback_activate = password_callback.clone();
+        let password_connect_btn_activate = password_connect_btn.clone();
+        let password_error_label_activate = password_error_label.clone();
+        password_entry.connect_activate(move |_| {
+            let pw = password_entry_activate.text().to_string();
+            if pw.is_empty() {
+                password_error_label_activate.set_label("Password cannot be empty");
+                password_error_label_activate.set_visible(true);
+                return;
+            }
+            password_connect_btn_activate.set_label("Connecting...");
+            password_connect_btn_activate.set_sensitive(false);
+            password_error_label_activate.set_visible(false);
+            if let Some(ref cb) = *password_callback_activate.borrow() {
+                cb(Some(pw));
+            }
+        });
+        
         let win = Self {
             window: window.clone(),
+            config,
             header,
             network_list,
             saved_networks_list,
@@ -361,6 +412,8 @@ impl OrbitWindow {
             password_box,
             password_entry,
             password_label,
+            password_error_label,
+            password_connect_btn: password_connect_btn.clone(),
             password_callback,
             error_revealer,
             error_box,
@@ -368,6 +421,7 @@ impl OrbitWindow {
             theme,
             css_provider,
             user_css_provider,
+
         };
 
         // Add Escape key shortcut to hide the window
@@ -386,11 +440,18 @@ impl OrbitWindow {
                     win_clone.hide();
                 }
                 gtk4::glib::Propagation::Stop
+            } else if key == gtk4::gdk::Key::Down || key == gtk4::gdk::Key::Tab {
+                win_clone.window.child_focus(gtk::DirectionType::TabForward);
+                gtk4::glib::Propagation::Stop
+            } else if key == gtk4::gdk::Key::Up || key == gtk4::gdk::Key::ISO_Left_Tab {
+                win_clone.window.child_focus(gtk::DirectionType::TabBackward);
+                gtk4::glib::Propagation::Stop
             } else {
                 gtk4::glib::Propagation::Proceed
             }
         });
         window.add_controller(key_controller);
+        
         
         win.apply_theme();
         
@@ -455,34 +516,34 @@ impl OrbitWindow {
             "top-left" => {
                 self.window.set_anchor(Edge::Top, true);
                 self.window.set_anchor(Edge::Left, true);
-                self.window.set_margin(Edge::Top, 10);
-                self.window.set_margin(Edge::Left, 10);
+                self.window.set_margin(Edge::Top, self.config.margin_top);
+                self.window.set_margin(Edge::Left, self.config.margin_left);
             }
             "top" => {
                 self.window.set_anchor(Edge::Top, true);
-                self.window.set_margin(Edge::Top, 10);
+                self.window.set_margin(Edge::Top, self.config.margin_top);
             }
             "top-right" => {
                 self.window.set_anchor(Edge::Top, true);
                 self.window.set_anchor(Edge::Right, true);
-                self.window.set_margin(Edge::Top, 10);
-                self.window.set_margin(Edge::Right, 10);
+                self.window.set_margin(Edge::Top, self.config.margin_top);
+                self.window.set_margin(Edge::Right, self.config.margin_right);
             }
             "bottom-left" => {
                 self.window.set_anchor(Edge::Bottom, true);
                 self.window.set_anchor(Edge::Left, true);
-                self.window.set_margin(Edge::Bottom, 10);
-                self.window.set_margin(Edge::Left, 10);
+                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
+                self.window.set_margin(Edge::Left, self.config.margin_left);
             }
             "bottom" => {
                 self.window.set_anchor(Edge::Bottom, true);
-                self.window.set_margin(Edge::Bottom, 10);
+                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
             }
             "bottom-right" => {
                 self.window.set_anchor(Edge::Bottom, true);
                 self.window.set_anchor(Edge::Right, true);
-                self.window.set_margin(Edge::Bottom, 10);
-                self.window.set_margin(Edge::Right, 10);
+                self.window.set_margin(Edge::Bottom, self.config.margin_bottom);
+                self.window.set_margin(Edge::Right, self.config.margin_right);
             }
             _ => {
                 // Default to top-right if unknown
@@ -496,21 +557,53 @@ impl OrbitWindow {
         self.details_revealer.set_reveal_child(false);
         self.password_label.set_label(&format!("Enter password for {}:", ssid));
         self.password_entry.set_text("");
-        *self.password_callback.borrow_mut() = Some(Box::new(callback));
+        self.password_error_label.set_label("");
+        self.password_error_label.set_visible(false);
+        self.password_connect_btn.set_label("Connect");
+        self.password_connect_btn.set_sensitive(true);
+        *self.password_callback.borrow_mut() = Some(Rc::new(callback));
         self.password_revealer.set_reveal_child(true);
         self.password_entry.grab_focus();
     }
     
     pub fn hide_password_dialog(&self) {
         self.password_entry.set_text("");
+        self.password_error_label.set_label("");
+        self.password_error_label.set_visible(false);
+        self.password_connect_btn.set_label("Connect");
+        self.password_connect_btn.set_sensitive(true);
         self.password_revealer.set_reveal_child(false);
         *self.password_callback.borrow_mut() = None;
     }
     
+    pub fn show_password_error(&self, message: &str) {
+        let clean_msg = sanitize_error_message(message);
+        self.password_error_label.set_label(&clean_msg);
+        self.password_error_label.set_visible(true);
+        self.password_connect_btn.set_label("Connect");
+        self.password_connect_btn.set_sensitive(true);
+        self.password_entry.grab_focus();
+    }
+    
+    pub fn set_password_connecting(&self) {
+        self.password_connect_btn.set_label("Connecting...");
+        self.password_connect_btn.set_sensitive(false);
+        self.password_error_label.set_visible(false);
+    }
+    
+    pub fn is_password_dialog_visible(&self) -> bool {
+        self.password_revealer.reveals_child()
+    }
+    
     pub fn show_error(&self, message: &str) {
+        // If password dialog is open, show error inline there instead
+        if self.password_revealer.reveals_child() {
+            self.show_password_error(message);
+            return;
+        }
+        let clean_msg = sanitize_error_message(message);
         self.details_revealer.set_reveal_child(false);
-        self.password_revealer.set_reveal_child(false);
-        self.error_label.set_label(message);
+        self.error_label.set_label(&clean_msg);
         self.error_revealer.set_reveal_child(true);
     }
     
@@ -578,5 +671,45 @@ impl OrbitWindow {
         self.password_revealer.set_reveal_child(false);
         self.error_revealer.set_reveal_child(false);
         self.details_revealer.set_reveal_child(true);
+    }
+}
+
+/// Sanitize D-Bus/system error messages into user-friendly text.
+fn sanitize_error_message(message: &str) -> String {
+    let msg_lower = message.to_lowercase();
+    
+    if msg_lower.contains("secret") || msg_lower.contains("password") 
+        || msg_lower.contains("psk") || msg_lower.contains("802-11-wireless-security") {
+        "Wrong password. Please try again.".to_string()
+    } else if msg_lower.contains("no suitable") || msg_lower.contains("no network") {
+        "Network not found. It may be out of range.".to_string()
+    } else if msg_lower.contains("timeout") || msg_lower.contains("timed out") {
+        "Connection timed out. Please try again.".to_string()
+    } else if (msg_lower.contains("type") && msg_lower.contains("does not match"))
+        || msg_lower.contains("a{sa{sv}}") || msg_lower.contains("dbus") 
+        || msg_lower.contains("org.freedesktop") {
+        "Operation failed. Please try again.".to_string()
+    } else if msg_lower.contains("rejected") || msg_lower.contains("auth") {
+        "Authentication failed. Check your password.".to_string()
+    } else if msg_lower.contains("not connected") || msg_lower.contains("not paired") {
+        "Device is not connected.".to_string()
+    } else if msg_lower.contains("already") && msg_lower.contains("connect") {
+        "Already connected.".to_string()
+    } else if msg_lower.contains("busy") || msg_lower.contains("in progress") {
+        "Device is busy. Please wait and try again.".to_string()
+    } else {
+        // Fallback: try to extract a readable suffix after the last ": "
+        if let Some(pos) = message.rfind(": ") {
+            let suffix = &message[pos + 2..];
+            if suffix.len() > 60 || suffix.contains('{') || suffix.contains('(') {
+                "Operation failed. Please try again.".to_string()
+            } else {
+                suffix.to_string()
+            }
+        } else if message.len() > 80 {
+            "Operation failed. Please try again.".to_string()
+        } else {
+            message.to_string()
+        }
     }
 }

@@ -21,6 +21,8 @@ pub struct DeviceList {
     theme: Rc<RefCell<Theme>>,
     devices: Rc<RefCell<Vec<BluetoothDevice>>>,
     on_action: Rc<RefCell<Option<Rc<dyn Fn(String, DeviceAction)>>>>,
+    action_path: Rc<RefCell<Option<String>>>,
+    action_type: Rc<RefCell<Option<DeviceAction>>>,
 }
 
 impl DeviceList {
@@ -68,10 +70,20 @@ impl DeviceList {
             theme,
             devices: Rc::new(RefCell::new(Vec::new())),
             on_action: Rc::new(RefCell::new(None)),
+            action_path: Rc::new(RefCell::new(None)),
+            action_type: Rc::new(RefCell::new(None)),
         };
         
-        list.show_placeholder();
+        list.show_loading();
         list
+    }
+    
+    fn show_loading(&self) {
+        let placeholder = gtk::Label::builder()
+            .label("Loading devices...")
+            .css_classes(["orbit-placeholder"])
+            .build();
+        self.list_box.append(&placeholder);
     }
     
     fn show_placeholder(&self) {
@@ -82,9 +94,23 @@ impl DeviceList {
         self.list_box.append(&placeholder);
     }
     
+    pub fn set_action_state(&self, path: Option<String>, action: Option<DeviceAction>) {
+        *self.action_path.borrow_mut() = path;
+        *self.action_type.borrow_mut() = action;
+        let devices = self.devices.borrow().clone();
+        if !devices.is_empty() {
+            self.render_devices(&devices);
+        }
+    }
+    
     pub fn set_devices(&self, devices: Vec<BluetoothDevice>) {
         *self.devices.borrow_mut() = devices.clone();
-        
+        *self.action_path.borrow_mut() = None;
+        *self.action_type.borrow_mut() = None;
+        self.render_devices(&devices);
+    }
+    
+    fn render_devices(&self, devices: &[BluetoothDevice]) {
         while let Some(child) = self.list_box.first_child() {
             self.list_box.remove(&child);
         }
@@ -152,7 +178,25 @@ impl DeviceList {
             .orientation(Orientation::Horizontal)
             .spacing(12)
             .css_classes(css_classes)
+            .focusable(true)
             .build();
+        
+        // Visual focus feedback
+        let row_focus = row.clone();
+        let focus_in = gtk::EventControllerFocus::new();
+        focus_in.connect_enter(move |_| {
+            row_focus.add_css_class("focused");
+        });
+        let row_unfocus = row.clone();
+        let focus_out = gtk::EventControllerFocus::new();
+        focus_out.connect_leave(move |_| {
+            row_unfocus.remove_css_class("focused");
+        });
+        row.add_controller(focus_in);
+        row.add_controller(focus_out);
+        
+        // Check if this device has an action in progress
+        let is_busy = self.action_path.borrow().as_deref() == Some(&device.path);
         
         if device.is_connected {
             let icon_container = gtk::Box::builder()
@@ -191,7 +235,15 @@ impl DeviceList {
             .build();
         info_box.append(&name);
         
-        let status_text = if device.is_connected {
+        let status_text = if is_busy {
+            match self.action_type.borrow().as_ref() {
+                Some(DeviceAction::Connect) => "Connecting...".to_string(),
+                Some(DeviceAction::Disconnect) => "Disconnecting...".to_string(),
+                Some(DeviceAction::Pair) => "Pairing...".to_string(),
+                Some(DeviceAction::Forget) => "Removing...".to_string(),
+                None => "Working...".to_string(),
+            }
+        } else if device.is_connected {
             if let Some(battery) = device.battery_percentage {
                 format!("Connected · {}% battery", battery)
             } else {
@@ -226,21 +278,34 @@ impl DeviceList {
         };
         
         let action_btn = gtk::Button::builder()
-            .label(action_label)
+            .label(if is_busy {
+                match self.action_type.borrow().as_ref() {
+                    Some(DeviceAction::Connect) => "Connecting...",
+                    Some(DeviceAction::Disconnect) => "Disconnecting...",
+                    Some(DeviceAction::Pair) => "Pairing...",
+                    Some(DeviceAction::Forget) => "Removing...",
+                    None => "Working...",
+                }
+            } else {
+                action_label
+            })
             .css_classes(if device.is_connected || device.is_paired {
                 vec!["orbit-button", "primary", "flat"]
             } else {
                 vec!["orbit-button", "flat"]
             })
+            .sensitive(!is_busy)
             .build();
         
-        let path = device.path.clone();
-        let on_action = self.on_action.clone();
-        action_btn.connect_clicked(move |_| {
-            if let Some(callback) = on_action.borrow().as_ref() {
-                callback(path.clone(), action.clone());
-            }
-        });
+        if !is_busy {
+            let path = device.path.clone();
+            let on_action = self.on_action.clone();
+            action_btn.connect_clicked(move |_| {
+                if let Some(callback) = on_action.borrow().as_ref() {
+                    callback(path.clone(), action.clone());
+                }
+            });
+        }
         
         actions_box.append(&action_btn);
         
@@ -248,15 +313,18 @@ impl DeviceList {
             let forget_btn = gtk::Button::builder()
                 .label("Forget")
                 .css_classes(["orbit-button", "destructive", "flat"])
+                .sensitive(!is_busy)
                 .build();
             
-            let path = device.path.clone();
-            let on_action = self.on_action.clone();
-            forget_btn.connect_clicked(move |_| {
-                if let Some(callback) = on_action.borrow().as_ref() {
-                    callback(path.clone(), DeviceAction::Forget);
-                }
-            });
+            if !is_busy {
+                let path = device.path.clone();
+                let on_action = self.on_action.clone();
+                forget_btn.connect_clicked(move |_| {
+                    if let Some(callback) = on_action.borrow().as_ref() {
+                        callback(path.clone(), DeviceAction::Forget);
+                    }
+                });
+            }
             
             actions_box.append(&forget_btn);
         }

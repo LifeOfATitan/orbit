@@ -280,6 +280,14 @@ window {{
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4), 0 0 12px {separator};
 }}
 
+/* Keyboard Focus State */
+.orbit-network-row.focused,
+.orbit-device-row.focused,
+.orbit-saved-network-row.focused {{
+    border-color: {accent};
+    box-shadow: 0 0 0 2px {separator};
+}}
+
 /* Buttons */
 .orbit-button {{
     background-color: rgba(255, 255, 255, 0.08);
@@ -401,11 +409,96 @@ entry, password-entry {{
     color: {fg};
     border-radius: 12px;
     padding: 10px 14px;
+    min-height: 20px;
+}}
+
+password-entry > text {{
+    margin-left: 8px;
+    margin-right: 8px;
 }}
 
 entry:focus, password-entry:focus {{
     border-color: {accent};
     box-shadow: 0 0 0 1px {accent};
+}}
+
+/* Password dialog error */
+.orbit-password-error {{
+    color: {destructive};
+    font-size: 12px;
+    font-weight: 500;
+}}
+
+/* Connecting state */
+.orbit-button.connecting {{
+    opacity: 0.7;
+}}
+
+/* Row error state */
+.orbit-status-error {{
+    color: {destructive};
+    font-size: 11px;
+}}
+
+/* Placeholder text (scanning, empty states) */
+.orbit-placeholder {{
+    color: {fg};
+    opacity: 0.5;
+    font-size: 13px;
+    font-style: italic;
+    padding: 32px 16px;
+}}
+
+/* Status line (under device/network name) */
+.orbit-status {{
+    font-size: 11px;
+    color: {fg};
+    opacity: 0.6;
+}}
+
+/* Signal/device type icon (disconnected state) */
+.orbit-signal-icon {{
+    color: {fg};
+    opacity: 0.5;
+}}
+
+/* Signal strength bars */
+.orbit-signal-bar-active {{
+    background-color: {fg};
+    opacity: 0.7;
+    border-radius: 1px;
+}}
+
+.orbit-signal-bar-active-accent {{
+    background-color: {accent};
+    border-radius: 1px;
+}}
+
+.orbit-signal-bar-inactive {{
+    background-color: {fg};
+    opacity: 0.15;
+    border-radius: 1px;
+}}
+
+.orbit-signal-bars-pad {{
+    padding: 2px;
+}}
+
+/* Icon container (connected state badge) */
+.orbit-icon-container {{
+    background-color: {separator};
+    border-radius: 8px;
+    padding: 6px;
+}}
+
+/* Power toggle switch */
+.orbit-toggle-switch {{
+    background-color: rgba(255, 255, 255, 0.12);
+    border-radius: 9999px;
+}}
+
+.orbit-toggle-switch:checked {{
+    background-color: {accent};
 }}
 "#,
             panel_bg = panel_bg,

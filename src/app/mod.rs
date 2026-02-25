@@ -22,7 +22,12 @@ enum AppEvent {
     BtScanResult(Vec<BluetoothDevice>),
     WifiPowerState(bool),
     BtPowerState(bool),
+    ConnectStarted(String),
+    ConnectSuccess,
+    BtActionStarted(String, DeviceAction),
+    BtActionSuccess,
     Error(String),
+    Notify(String),
     DaemonCommand(DaemonCommand),
     RefreshRequest,
 }
@@ -108,13 +113,25 @@ impl OrbitApp {
                         if let Ok(enabled) = rt.block_on(async { nm.is_wifi_enabled().await }) {
                             let _ = tx.send_blocking(AppEvent::WifiPowerState(enabled));
                             
-                            // Startup nudge: if enabled but not connected, trigger a scan
                             if enabled {
                                 let active = rt.block_on(async { nm.get_active_ssid().await });
-                                if active.is_none() {
-                                    // Wait 2s for NM to settle before nudging
-                                    std::thread::sleep(std::time::Duration::from_secs(2));
-                                    let _ = rt.block_on(async { nm.scan().await });
+                                if let Some(ref ssid) = active {
+                                    // Already connected (autoconnect worked), notify
+                                    let _ = tx.send_blocking(AppEvent::Notify(
+                                        format!("Connected to {}", ssid)
+                                    ));
+                                } else {
+                                    // Not connected yet — wait for NM autoconnect to kick in
+                                    std::thread::sleep(std::time::Duration::from_secs(4));
+                                    let active_after = rt.block_on(async { nm.get_active_ssid().await });
+                                    if let Some(ref ssid) = active_after {
+                                        let _ = tx.send_blocking(AppEvent::Notify(
+                                            format!("Connected to {}", ssid)
+                                        ));
+                                    } else {
+                                        // Still not connected, trigger a scan
+                                        let _ = rt.block_on(async { nm.scan().await });
+                                    }
                                 }
                             }
                         }
@@ -141,6 +158,12 @@ impl OrbitApp {
             }
             
             let is_visible = Rc::new(RefCell::new(!is_daemon));
+            
+            // Sync is_visible with actual window visibility (handles auto-close, escape, etc.)
+            let is_visible_sync = is_visible.clone();
+            win.window().connect_notify_local(Some("visible"), move |window, _| {
+                *is_visible_sync.borrow_mut() = window.is_visible();
+            });
             
             if !is_daemon {
                 win.show();
@@ -211,7 +234,32 @@ fn setup_events_receiver(
                     }
                 }
                 AppEvent::Error(msg) => {
+                    win.network_list().set_connecting_ssid(None);
                     win.show_error(&msg);
+                }
+                AppEvent::Notify(msg) => {
+                    std::thread::spawn(move || {
+                        let _ = std::process::Command::new("notify-send")
+                            .arg("Orbit")
+                            .arg(&msg)
+                            .arg("--app-name=Orbit")
+                            .arg("-i")
+                            .arg("network-wireless")
+                            .spawn();
+                    });
+                }
+                AppEvent::ConnectStarted(ssid) => {
+                    win.network_list().set_connecting_ssid(Some(ssid));
+                }
+                AppEvent::ConnectSuccess => {
+                    win.network_list().set_connecting_ssid(None);
+                    win.hide_password_dialog();
+                }
+                AppEvent::BtActionStarted(path, action) => {
+                    win.device_list().set_action_state(Some(path), Some(action));
+                }
+                AppEvent::BtActionSuccess => {
+                    win.device_list().set_action_state(None, None);
                 }
                 AppEvent::DaemonCommand(cmd) => {
                     match cmd {
@@ -487,9 +535,14 @@ fn setup_ui_callbacks(
             std::thread::spawn(move || {
                 let nm_guard = nm.lock().unwrap();
                 if let Some(ref nm_inst) = *nm_guard {
-                    if let Ok(()) = rt.block_on(async { nm_inst.disconnect().await }) {
-                        if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                            let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                    match rt.block_on(async { nm_inst.disconnect().await }) {
+                        Ok(()) => {
+                            if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
+                                let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                            }
+                        }
+                        Err(e) => {
+                            let _ = tx.send_blocking(AppEvent::Error(format!("Disconnect failed: {}", e)));
                         }
                     }
                 }
@@ -513,6 +566,10 @@ fn setup_ui_callbacks(
                             if let Some(ref nm_inst) = *nm_guard {
                                 match rt.block_on(async { nm_inst.connect(&ssid, Some(&pwd), &ap_path).await }) {
                                     Ok(()) => {
+                                        let _ = tx.send_blocking(AppEvent::ConnectSuccess);
+                                        let _ = tx.send_blocking(AppEvent::Notify(
+                                            format!("Connected to {}", ssid)
+                                        ));
                                         if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
                                             let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
                                         }
@@ -524,13 +581,21 @@ fn setup_ui_callbacks(
                     }
                 });
             } else {
+                let _ = tx.send_blocking(AppEvent::ConnectStarted(ssid.clone()));
                 std::thread::spawn(move || {
                     let nm_guard = nm.lock().unwrap();
                     if let Some(ref nm_inst) = *nm_guard {
-                        if let Ok(()) = rt.block_on(async { nm_inst.connect(&ssid, None, &ap_path).await }) {
-                            if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                                let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                        match rt.block_on(async { nm_inst.connect(&ssid, None, &ap_path).await }) {
+                            Ok(()) => {
+                                let _ = tx.send_blocking(AppEvent::ConnectSuccess);
+                                let _ = tx.send_blocking(AppEvent::Notify(
+                                    format!("Connected to {}", ssid)
+                                ));
+                                if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
+                                    let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                                }
                             }
+                            Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
                         }
                     }
                 });
@@ -592,6 +657,7 @@ fn setup_ui_callbacks(
         let bt = bt_act.clone();
         let rt = rt_act.clone();
         let tx = tx_act.clone();
+        let _ = tx.send_blocking(AppEvent::BtActionStarted(path.clone(), action.clone()));
         std::thread::spawn(move || {
             let bt_guard = bt.lock().unwrap();
             if let Some(ref bt_inst) = *bt_guard {
@@ -601,10 +667,21 @@ fn setup_ui_callbacks(
                     DeviceAction::Pair => rt.block_on(async { bt_inst.pair_device(&path).await }),
                     DeviceAction::Forget => rt.block_on(async { bt_inst.forget_device(&path).await }),
                 };
-                if let Ok(()) = res {
-                    std::thread::sleep(std::time::Duration::from_millis(500));
-                    if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
-                        let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                match res {
+                    Ok(()) => {
+                        let _ = tx.send_blocking(AppEvent::BtActionSuccess);
+                        std::thread::sleep(std::time::Duration::from_millis(500));
+                        if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
+                            let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send_blocking(AppEvent::BtActionSuccess);
+                        let _ = tx.send_blocking(AppEvent::Error(format!("Bluetooth action failed: {}", e)));
+                        // Refresh device list to restore correct state
+                        if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
+                            let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                        }
                     }
                 }
             }

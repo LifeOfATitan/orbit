@@ -64,8 +64,16 @@ impl SavedNetworksList {
             on_autoconnect_toggle: Rc::new(RefCell::new(None)),
         };
         
-        list.show_placeholder();
+        list.show_loading();
         list
+    }
+    
+    fn show_loading(&self) {
+        let placeholder = gtk::Label::builder()
+            .label("Loading saved networks...")
+            .css_classes(["orbit-placeholder"])
+            .build();
+        self.list_box.append(&placeholder);
     }
     
     fn show_placeholder(&self) {
@@ -131,7 +139,22 @@ impl SavedNetworksList {
             .orientation(Orientation::Horizontal)
             .spacing(12)
             .css_classes(css_classes)
+            .focusable(true)
             .build();
+        
+        // Visual focus feedback
+        let row_focus = row.clone();
+        let focus_in = gtk::EventControllerFocus::new();
+        focus_in.connect_enter(move |_| {
+            row_focus.add_css_class("focused");
+        });
+        let row_unfocus = row.clone();
+        let focus_out = gtk::EventControllerFocus::new();
+        focus_out.connect_leave(move |_| {
+            row_unfocus.remove_css_class("focused");
+        });
+        row.add_controller(focus_in);
+        row.add_controller(focus_out);
         
         if network.is_active {
             let icon_container = gtk::Box::builder()

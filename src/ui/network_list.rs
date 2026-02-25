@@ -14,6 +14,7 @@ pub struct NetworkList {
     networks: Rc<RefCell<Vec<AccessPoint>>>,
     on_connect: Rc<RefCell<Option<Rc<dyn Fn(AccessPoint)>>>>,
     on_details: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
+    connecting_ssid: Rc<RefCell<Option<String>>>,
 }
 
 impl NetworkList {
@@ -62,10 +63,19 @@ impl NetworkList {
             networks: Rc::new(RefCell::new(Vec::new())),
             on_connect: Rc::new(RefCell::new(None)),
             on_details: Rc::new(RefCell::new(None)),
+            connecting_ssid: Rc::new(RefCell::new(None)),
         };
         
-        list.show_placeholder();
+        list.show_loading();
         list
+    }
+    
+    fn show_loading(&self) {
+        let placeholder = gtk::Label::builder()
+            .label("Loading networks...")
+            .css_classes(["orbit-placeholder"])
+            .build();
+        self.list_box.append(&placeholder);
     }
     
     fn show_placeholder(&self) {
@@ -76,18 +86,70 @@ impl NetworkList {
         self.list_box.append(&placeholder);
     }
     
-    fn get_signal_icon_name(strength: u8) -> &'static str {
+    fn signal_bar_count(strength: u8) -> u8 {
         match strength {
-            0..=24 => "network-wireless-signal-weak-symbolic",
-            25..=49 => "network-wireless-signal-ok-symbolic",
-            50..=74 => "network-wireless-signal-good-symbolic",
-            _ => "network-wireless-signal-excellent-symbolic",
+            0..=24 => 1,
+            25..=49 => 2,
+            50..=74 => 3,
+            _ => 4,
+        }
+    }
+    
+    /// Build a 4-bar signal-strength widget using plain GTK boxes (no icon theme).
+    fn build_signal_bars(strength: u8, is_connected: bool) -> gtk::Box {
+        let active_bars = Self::signal_bar_count(strength);
+        let heights = [4, 8, 12, 16];
+        
+        let container = gtk::Box::builder()
+            .orientation(Orientation::Horizontal)
+            .spacing(2)
+            .valign(gtk::Align::End)
+            .halign(gtk::Align::Center)
+            .build();
+        
+        for (i, &h) in heights.iter().enumerate() {
+            let bar_num = (i + 1) as u8;
+            let active = bar_num <= active_bars;
+            
+            let bar = gtk::Box::builder()
+                .width_request(3)
+                .height_request(h)
+                .valign(gtk::Align::End)
+                .build();
+            
+            if active {
+                if is_connected {
+                    bar.add_css_class("orbit-signal-bar-active-accent");
+                } else {
+                    bar.add_css_class("orbit-signal-bar-active");
+                }
+            } else {
+                bar.add_css_class("orbit-signal-bar-inactive");
+            }
+            
+            container.append(&bar);
+        }
+        
+        container
+    }
+    
+    pub fn set_connecting_ssid(&self, ssid: Option<String>) {
+        *self.connecting_ssid.borrow_mut() = ssid;
+        // Re-render the list with current networks to reflect state change
+        let networks = self.networks.borrow().clone();
+        if !networks.is_empty() {
+            self.render_networks(&networks);
         }
     }
     
     pub fn set_networks(&self, networks: Vec<AccessPoint>) {
         *self.networks.borrow_mut() = networks.clone();
-        
+        // Clear connecting state when network list refreshes (connection completed)
+        *self.connecting_ssid.borrow_mut() = None;
+        self.render_networks(&networks);
+    }
+    
+    fn render_networks(&self, networks: &[AccessPoint]) {
         while let Some(child) = self.list_box.first_child() {
             self.list_box.remove(&child);
         }
@@ -140,7 +202,22 @@ impl NetworkList {
             .orientation(Orientation::Horizontal)
             .spacing(12)
             .css_classes(css_classes)
+            .focusable(true)
             .build();
+        
+        // Visual focus feedback
+        let row_focus = row.clone();
+        let focus_in = gtk::EventControllerFocus::new();
+        focus_in.connect_enter(move |_| {
+            row_focus.add_css_class("focused");
+        });
+        let row_unfocus = row.clone();
+        let focus_out = gtk::EventControllerFocus::new();
+        focus_out.connect_leave(move |_| {
+            row_unfocus.remove_css_class("focused");
+        });
+        row.add_controller(focus_in);
+        row.add_controller(focus_out);
         
         if network.is_connected {
             let icon_container = gtk::Box::builder()
@@ -149,20 +226,14 @@ impl NetworkList {
                 .valign(gtk::Align::Center)
                 .build();
             
-            let signal_icon = gtk::Image::builder()
-                .icon_name("network-wireless-symbolic")
-                .pixel_size(20)
-                .css_classes(["orbit-icon-accent"])
-                .build();
-            icon_container.append(&signal_icon);
+            let signal_bars = Self::build_signal_bars(network.signal_strength, true);
+            icon_container.append(&signal_bars);
             row.append(&icon_container);
         } else {
-            let signal_icon = gtk::Image::builder()
-                .icon_name(Self::get_signal_icon_name(network.signal_strength))
-                .css_classes(["orbit-signal-icon"])
-                .pixel_size(20)
-                .build();
-            row.append(&signal_icon);
+            let signal_bars = Self::build_signal_bars(network.signal_strength, false);
+            signal_bars.set_valign(gtk::Align::Center);
+            signal_bars.add_css_class("orbit-signal-bars-pad");
+            row.append(&signal_bars);
         }
         
         let info_box = gtk::Box::builder()
@@ -209,14 +280,30 @@ impl NetworkList {
             actions_box.append(&lock_icon);
         }
         
-        let action_label = if network.is_connected { "Disconnect" } else { "Connect" };
+        let is_connecting = self.connecting_ssid.borrow().as_deref() == Some(&network.ssid);
+        let any_connecting = self.connecting_ssid.borrow().is_some();
+        
+        let action_label = if network.is_connected {
+            "Disconnect"
+        } else if is_connecting {
+            "Connecting..."
+        } else {
+            "Connect"
+        };
+        
+        let mut btn_classes = if network.is_connected { 
+            vec!["orbit-button", "flat"] 
+        } else { 
+            vec!["orbit-button", "primary", "flat"] 
+        };
+        if is_connecting {
+            btn_classes.push("connecting");
+        }
+        
         let action_btn = gtk::Button::builder()
             .label(action_label)
-            .css_classes(if network.is_connected { 
-                vec!["orbit-button", "flat"] 
-            } else { 
-                vec!["orbit-button", "primary", "flat"] 
-            })
+            .css_classes(btn_classes)
+            .sensitive(!is_connecting && !(any_connecting && !network.is_connected))
             .build();
         
         let network_clone = network.clone();

@@ -12,6 +12,7 @@ pub struct Header {
     bluetooth_tab: gtk::Button,
     power_switch: gtk::Switch,
     power_box: gtk::Box,
+    power_label: gtk::Label,
     theme: Rc<RefCell<Theme>>,
     is_programmatic_update: Rc<RefCell<bool>>,
 }
@@ -44,12 +45,21 @@ impl Header {
         
         let power_switch = gtk::Switch::builder()
             .css_classes(["orbit-toggle-switch"])
-            .active(true)
+            .active(false)
+            .sensitive(false)
+            .build();
+        
+        let power_label = gtk::Label::builder()
+            .label("WiFi")
+            .css_classes(["orbit-status"])
             .build();
         
         let power_box = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
+            .spacing(8)
+            .valign(gtk::Align::Center)
             .build();
+        power_box.append(&power_label);
         power_box.append(&power_switch);
         
         title_row.append(&orbit_icon);
@@ -94,6 +104,7 @@ impl Header {
             bluetooth_tab,
             power_switch,
             power_box,
+            power_label,
             theme,
             is_programmatic_update: Rc::new(RefCell::new(false)),
         };
@@ -107,6 +118,7 @@ impl Header {
     
     pub fn set_power_state(&self, enabled: bool) {
         *self.is_programmatic_update.borrow_mut() = true;
+        self.power_switch.set_sensitive(true);
         self.power_switch.set_active(enabled);
         *self.is_programmatic_update.borrow_mut() = false;
     }
@@ -140,6 +152,7 @@ impl Header {
             "wifi" => {
                 self.wifi_tab.add_css_class("active");
                 self.power_box.set_visible(true);
+                self.power_label.set_label("WiFi");
             }
             "saved" => {
                 self.saved_tab.add_css_class("active");
@@ -148,6 +161,7 @@ impl Header {
             "bluetooth" => {
                 self.bluetooth_tab.add_css_class("active");
                 self.power_box.set_visible(true);
+                self.power_label.set_label("Bluetooth");
             }
             _ => {}
         }
