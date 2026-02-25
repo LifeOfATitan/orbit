@@ -381,6 +381,25 @@ impl NetworkManager {
         let active_paths: Vec<zbus::zvariant::OwnedObjectPath> = reply.try_into().unwrap_or_default();
         
         for path in active_paths {
+            // Only deactivate wireless connections, leave ethernet/VPN alone
+            let conn_type: String = self.conn
+                .call_method(
+                    Some("org.freedesktop.NetworkManager"),
+                    &path,
+                    Some("org.freedesktop.DBus.Properties"),
+                    "Get",
+                    &("org.freedesktop.NetworkManager.Connection.Active", "Type"),
+                )
+                .await
+                .ok()
+                .and_then(|r| r.body().deserialize::<zbus::zvariant::OwnedValue>().ok())
+                .and_then(|v| String::try_from(v).ok())
+                .unwrap_or_default();
+            
+            if conn_type != "802-11-wireless" {
+                continue;
+            }
+            
             self.conn
                 .call_method(
                     Some("org.freedesktop.NetworkManager"),

@@ -36,7 +36,10 @@ impl Default for Config {
 
 impl Config {
     pub fn load() -> Self {
-        let config_path = Self::config_path();
+        let config_path = match Self::config_path() {
+            Some(p) => p,
+            None => return Self::default(),
+        };
         
         if config_path.exists() {
             match std::fs::read_to_string(&config_path) {
@@ -59,12 +62,12 @@ impl Config {
         Self::default()
     }
     
-    pub fn config_path() -> PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home".to_string());
-        PathBuf::from(home)
+    pub fn config_path() -> Option<PathBuf> {
+        let home = std::env::var("HOME").ok()?;
+        Some(PathBuf::from(home)
             .join(".config")
             .join("orbit")
-            .join("config.toml")
+            .join("config.toml"))
     }
     
     pub fn position_tuple(&self) -> (i32, i32) {

@@ -162,7 +162,8 @@ impl BluetoothManager {
                     .and_then(|v| v.downcast_ref::<bool>().ok())
                     .unwrap_or(false);
                 
-                let battery = device_props.get("BatteryPercentage")
+                let battery = interfaces.get("org.bluez.Battery1")
+                    .and_then(|props| props.get("Percentage"))
                     .and_then(|v| v.downcast_ref::<u8>().ok());
                 
                 let device_class = match device_props.get("Class") {

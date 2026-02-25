@@ -463,8 +463,12 @@ impl OrbitWindow {
         self.css_provider.load_from_data(&css);
 
         let user_css_path = Theme::style_css_path();
-        if user_css_path.exists() {
-            self.user_css_provider.load_from_path(&user_css_path);
+        if let Some(ref path) = user_css_path {
+            if path.exists() {
+                self.user_css_provider.load_from_path(path);
+            } else {
+                self.user_css_provider.load_from_data("");
+            }
         } else {
             self.user_css_provider.load_from_data("");
         }

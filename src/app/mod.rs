@@ -25,7 +25,7 @@ enum AppEvent {
     ConnectStarted(String),
     ConnectSuccess,
     BtActionStarted(String, DeviceAction),
-    BtActionSuccess,
+    BtActionComplete,
     BtUnavailable,
     Error(String),
     Notify(String),
@@ -291,7 +291,7 @@ fn setup_events_receiver(
                 AppEvent::BtActionStarted(path, action) => {
                     win.device_list().set_action_state(Some(path), Some(action));
                 }
-                AppEvent::BtActionSuccess => {
+                AppEvent::BtActionComplete => {
                     win.device_list().set_action_state(None, None);
                 }
                 AppEvent::BtUnavailable => {
@@ -718,14 +718,14 @@ fn setup_ui_callbacks(
                 };
                 match res {
                     Ok(()) => {
-                        let _ = tx.send_blocking(AppEvent::BtActionSuccess);
+                        let _ = tx.send_blocking(AppEvent::BtActionComplete);
                         std::thread::sleep(std::time::Duration::from_millis(500));
                         if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {
                             let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
                         }
                     }
                     Err(e) => {
-                        let _ = tx.send_blocking(AppEvent::BtActionSuccess);
+                        let _ = tx.send_blocking(AppEvent::BtActionComplete);
                         let _ = tx.send_blocking(AppEvent::Error(format!("Bluetooth action failed: {}", e)));
                         // Refresh device list to restore correct state
                         if let Ok(devices) = rt.block_on(async { bt_inst.get_devices().await }) {

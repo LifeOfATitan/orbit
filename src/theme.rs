@@ -32,7 +32,10 @@ impl Default for Theme {
 
 impl Theme {
     pub fn load() -> Self {
-        let theme_path = Self::theme_path();
+        let theme_path = match Self::theme_path() {
+            Some(p) => p,
+            None => return Self::default(),
+        };
         
         if theme_path.exists() {
             match std::fs::read_to_string(&theme_path) {
@@ -61,20 +64,20 @@ impl Theme {
         Self::default()
     }
     
-    pub fn theme_path() -> std::path::PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home/amadeus".to_string());
-        std::path::PathBuf::from(home)
+    pub fn theme_path() -> Option<std::path::PathBuf> {
+        let home = std::env::var("HOME").ok()?;
+        Some(std::path::PathBuf::from(home)
             .join(".config")
             .join("orbit")
-            .join("theme.toml")
+            .join("theme.toml"))
     }
 
-    pub fn style_css_path() -> std::path::PathBuf {
-        let home = std::env::var("HOME").unwrap_or_else(|_| "/home/amadeus".to_string());
-        std::path::PathBuf::from(home)
+    pub fn style_css_path() -> Option<std::path::PathBuf> {
+        let home = std::env::var("HOME").ok()?;
+        Some(std::path::PathBuf::from(home)
             .join(".config")
             .join("orbit")
-            .join("style.css")
+            .join("style.css"))
     }
 
     fn hex_to_rgb(&self, hex: &str) -> (u8, u8, u8) {
