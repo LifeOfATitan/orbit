@@ -57,7 +57,6 @@ impl DaemonCommand {
 }
 
 pub struct DaemonServer {
-    socket_path: PathBuf,
     listener: Option<UnixListener>,
 }
 
@@ -75,13 +74,8 @@ impl DaemonServer {
         listener.set_nonblocking(true)?;
         
         Ok(Self {
-            socket_path,
             listener: Some(listener),
         })
-    }
-    
-    pub fn socket_path(&self) -> &PathBuf {
-        &self.socket_path
     }
     
     pub fn run<F>(mut self, callback: F) 

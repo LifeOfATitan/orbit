@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, glib, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::theme::Theme;
 use crate::dbus::network_manager::SavedNetwork;
 
 #[derive(Clone)]
@@ -10,14 +9,13 @@ pub struct SavedNetworksList {
     container: gtk::Box,
     list_box: gtk::Box,
     refresh_button: gtk::Button,
-    theme: Rc<RefCell<Theme>>,
     networks: Rc<RefCell<Vec<SavedNetwork>>>,
     on_forget: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
     on_autoconnect_toggle: Rc<RefCell<Option<Rc<dyn Fn(String, bool)>>>>,
 }
 
 impl SavedNetworksList {
-    pub fn new(theme: Rc<RefCell<Theme>>) -> Self {
+    pub fn new() -> Self {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .vexpand(true)
@@ -58,7 +56,6 @@ impl SavedNetworksList {
             container,
             list_box,
             refresh_button,
-            theme,
             networks: Rc::new(RefCell::new(Vec::new())),
             on_forget: Rc::new(RefCell::new(None)),
             on_autoconnect_toggle: Rc::new(RefCell::new(None)),

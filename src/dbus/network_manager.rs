@@ -1,44 +1,18 @@
 use zbus::Connection;
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum ConnectionState {
-    Unknown,
-    Disconnected,
-    Connecting,
-    Connected,
-    Disconnecting,
-    Failed,
-}
-
-impl From<u32> for ConnectionState {
-    fn from(value: u32) -> Self {
-        match value {
-            0 => ConnectionState::Unknown,
-            1 => ConnectionState::Disconnected,
-            2 => ConnectionState::Connecting,
-            3 => ConnectionState::Connected,
-            4 => ConnectionState::Disconnecting,
-            5 => ConnectionState::Failed,
-            _ => ConnectionState::Unknown,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct AccessPoint {
     pub ssid: String,
     pub signal_strength: u8,
     pub security: SecurityType,
     pub is_connected: bool,
-    pub path: String,
     pub device_path: String,
 }
 
 #[derive(Debug, Clone)]
 pub struct SavedNetwork {
     pub ssid: String,
-    pub uuid: String,
     pub path: String,
     pub autoconnect: bool,
     pub is_active: bool,
@@ -48,7 +22,6 @@ pub struct SavedNetwork {
 pub struct NetworkDetails {
     pub ssid: String,
     pub ip4_address: String,
-    pub ip6_address: String,
     pub gateway: String,
     pub dns_servers: Vec<String>,
     pub mac_address: String,
@@ -62,7 +35,6 @@ pub enum SecurityType {
     WEP,
     WPA,
     WPA2,
-    WPA3,
 }
 
 #[derive(Clone)]
@@ -234,7 +206,6 @@ impl NetworkManager {
                     signal_strength: strength,
                     security,
                     is_connected,
-                    path: ap_path.to_string(),
                     device_path: device_path.clone(),
                 });
             }
@@ -437,11 +408,6 @@ impl NetworkManager {
                             .map(|s| s.to_string())
                             .unwrap_or_default();
                         
-                        let uuid = connection_map.get("uuid")
-                            .and_then(|v| v.downcast_ref::<String>().ok())
-                            .map(|s| s.to_string())
-                            .unwrap_or_default();
-                        
                         let autoconnect = connection_map.get("autoconnect")
                             .and_then(|v| v.downcast_ref::<bool>().ok())
                             .unwrap_or(true);
@@ -450,7 +416,6 @@ impl NetworkManager {
                         
                         saved_networks.push(SavedNetwork {
                             ssid: id,
-                            uuid,
                             path: conn_path.to_string(),
                             autoconnect,
                             is_active,

@@ -45,7 +45,6 @@ impl From<u32> for DeviceType {
 pub struct BluetoothDevice {
     pub path: String,
     pub name: String,
-    pub address: String,
     pub device_type: DeviceType,
     pub is_connected: bool,
     pub is_paired: bool,
@@ -155,11 +154,6 @@ impl BluetoothManager {
                     .map(|s| s.to_string())
                     .unwrap_or_else(|| "Unknown".to_string());
                 
-                let address = device_props.get("Address")
-                    .and_then(|v| v.downcast_ref::<String>().ok())
-                    .map(|s| s.to_string())
-                    .unwrap_or_default();
-                
                 let is_connected = device_props.get("Connected")
                     .and_then(|v| v.downcast_ref::<bool>().ok())
                     .unwrap_or(false);
@@ -182,7 +176,6 @@ impl BluetoothManager {
                 devices.push(BluetoothDevice {
                     path: path.to_string(),
                     name,
-                    address,
                     device_type: device_class,
                     is_connected,
                     is_paired,

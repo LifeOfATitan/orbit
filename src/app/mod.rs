@@ -26,10 +26,10 @@ enum AppEvent {
     ConnectSuccess,
     BtActionStarted(String, DeviceAction),
     BtActionSuccess,
+    BtUnavailable,
     Error(String),
     Notify(String),
     DaemonCommand(DaemonCommand),
-    RefreshRequest,
 }
 
 pub struct OrbitApp {
@@ -144,12 +144,18 @@ impl OrbitApp {
                     }
                     
                     if let Some(ref bt) = bt_inst {
-                        if let Ok(devices) = rt.block_on(async { bt.get_devices().await }) {
-                            let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                        if !rt.block_on(async { bt.is_available().await }) {
+                            let _ = tx.send_blocking(AppEvent::BtUnavailable);
+                        } else {
+                            if let Ok(devices) = rt.block_on(async { bt.get_devices().await }) {
+                                let _ = tx.send_blocking(AppEvent::BtScanResult(devices));
+                            }
+                            if let Ok(powered) = rt.block_on(async { bt.is_powered().await }) {
+                                let _ = tx.send_blocking(AppEvent::BtPowerState(powered));
+                            }
                         }
-                        if let Ok(powered) = rt.block_on(async { bt.is_powered().await }) {
-                            let _ = tx.send_blocking(AppEvent::BtPowerState(powered));
-                        }
+                    } else {
+                        let _ = tx.send_blocking(AppEvent::BtUnavailable);
                     }
                     
                     *nm_arc.lock().unwrap() = nm_inst;
@@ -261,6 +267,10 @@ fn setup_events_receiver(
                 AppEvent::BtActionSuccess => {
                     win.device_list().set_action_state(None, None);
                 }
+                AppEvent::BtUnavailable => {
+                    win.header().bluetooth_tab().set_sensitive(false);
+                    win.device_list().show_no_adapter();
+                }
                 AppEvent::DaemonCommand(cmd) => {
                     match cmd {
                         DaemonCommand::Show => {
@@ -343,9 +353,7 @@ fn setup_events_receiver(
                         }
                     }
                 }
-                AppEvent::RefreshRequest => {
-                    // Handled by periodic refresh
-                }
+
             }
         }
     });

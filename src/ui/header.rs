@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::theme::Theme;
 
 #[derive(Clone)]
 pub struct Header {
@@ -13,12 +12,11 @@ pub struct Header {
     power_switch: gtk::Switch,
     power_box: gtk::Box,
     power_label: gtk::Label,
-    theme: Rc<RefCell<Theme>>,
     is_programmatic_update: Rc<RefCell<bool>>,
 }
 
 impl Header {
-    pub fn new(theme: Rc<RefCell<Theme>>) -> Self {
+    pub fn new() -> Self {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .css_classes(["orbit-header"])
@@ -105,7 +103,6 @@ impl Header {
             power_switch,
             power_box,
             power_label,
-            theme,
             is_programmatic_update: Rc::new(RefCell::new(false)),
         };
 

@@ -158,7 +158,7 @@ impl OrbitWindow {
             .overflow(gtk::Overflow::Hidden)
             .build();
         
-        let header = Header::new(theme.clone());
+        let header = Header::new();
         main_box.append(header.widget());
         
         let stack = gtk::Stack::builder()
@@ -166,9 +166,9 @@ impl OrbitWindow {
             .hexpand(true)
             .build();
         
-        let network_list = NetworkList::new(theme.clone());
-        let saved_networks_list = SavedNetworksList::new(theme.clone());
-        let device_list = DeviceList::new(theme.clone());
+        let network_list = NetworkList::new();
+        let saved_networks_list = SavedNetworksList::new();
+        let device_list = DeviceList::new();
         
         stack.add_named(network_list.widget(), Some("wifi"));
         stack.add_named(saved_networks_list.widget(), Some("saved"));
@@ -585,15 +585,6 @@ impl OrbitWindow {
         self.password_entry.grab_focus();
     }
     
-    pub fn set_password_connecting(&self) {
-        self.password_connect_btn.set_label("Connecting...");
-        self.password_connect_btn.set_sensitive(false);
-        self.password_error_label.set_visible(false);
-    }
-    
-    pub fn is_password_dialog_visible(&self) -> bool {
-        self.password_revealer.reveals_child()
-    }
     
     pub fn show_error(&self, message: &str) {
         // If password dialog is open, show error inline there instead
@@ -605,10 +596,6 @@ impl OrbitWindow {
         self.details_revealer.set_reveal_child(false);
         self.error_label.set_label(&clean_msg);
         self.error_revealer.set_reveal_child(true);
-    }
-    
-    pub fn hide_error(&self) {
-        self.error_revealer.set_reveal_child(false);
     }
     
     pub fn show_network_details(&self, details: &crate::dbus::network_manager::NetworkDetails) {

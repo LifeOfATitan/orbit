@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::theme::Theme;
 use crate::dbus::network_manager::{AccessPoint, SecurityType};
 
 #[derive(Clone)]
@@ -10,7 +9,6 @@ pub struct NetworkList {
     container: gtk::Box,
     list_box: gtk::Box,
     scan_button: gtk::Button,
-    theme: Rc<RefCell<Theme>>,
     networks: Rc<RefCell<Vec<AccessPoint>>>,
     on_connect: Rc<RefCell<Option<Rc<dyn Fn(AccessPoint)>>>>,
     on_details: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
@@ -18,7 +16,7 @@ pub struct NetworkList {
 }
 
 impl NetworkList {
-    pub fn new(theme: Rc<RefCell<Theme>>) -> Self {
+    pub fn new() -> Self {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .vexpand(true)
@@ -59,7 +57,6 @@ impl NetworkList {
             container,
             list_box,
             scan_button,
-            theme,
             networks: Rc::new(RefCell::new(Vec::new())),
             on_connect: Rc::new(RefCell::new(None)),
             on_details: Rc::new(RefCell::new(None)),

@@ -2,7 +2,6 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::theme::Theme;
 use crate::dbus::bluez::BluetoothDevice;
 
 #[derive(Clone)]
@@ -18,7 +17,6 @@ pub struct DeviceList {
     container: gtk::Box,
     list_box: gtk::Box,
     scan_button: gtk::Button,
-    theme: Rc<RefCell<Theme>>,
     devices: Rc<RefCell<Vec<BluetoothDevice>>>,
     on_action: Rc<RefCell<Option<Rc<dyn Fn(String, DeviceAction)>>>>,
     action_path: Rc<RefCell<Option<String>>>,
@@ -26,7 +24,7 @@ pub struct DeviceList {
 }
 
 impl DeviceList {
-    pub fn new(theme: Rc<RefCell<Theme>>) -> Self {
+    pub fn new() -> Self {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .vexpand(true)
@@ -67,7 +65,6 @@ impl DeviceList {
             container,
             list_box,
             scan_button,
-            theme,
             devices: Rc::new(RefCell::new(Vec::new())),
             on_action: Rc::new(RefCell::new(None)),
             action_path: Rc::new(RefCell::new(None)),
@@ -92,6 +89,18 @@ impl DeviceList {
             .css_classes(["orbit-placeholder"])
             .build();
         self.list_box.append(&placeholder);
+    }
+    
+    pub fn show_no_adapter(&self) {
+        while let Some(child) = self.list_box.first_child() {
+            self.list_box.remove(&child);
+        }
+        let placeholder = gtk::Label::builder()
+            .label("No Bluetooth adapter present")
+            .css_classes(["orbit-placeholder"])
+            .build();
+        self.list_box.append(&placeholder);
+        self.scan_button.set_sensitive(false);
     }
     
     pub fn set_action_state(&self, path: Option<String>, action: Option<DeviceAction>) {
