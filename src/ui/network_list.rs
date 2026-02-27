@@ -370,18 +370,6 @@ impl NetworkList {
         &self.scan_button
     }
     
-    pub fn show_scanning(&self) {
-        while let Some(child) = self.list_box.first_child() {
-            self.list_box.remove(&child);
-        }
-        
-        let scanning = gtk::Label::builder()
-            .label("Scanning for networks...")
-            .css_classes(["orbit-placeholder"])
-            .build();
-        self.list_box.append(&scanning);
-    }
-    
     pub fn set_on_connect<F: Fn(AccessPoint) + 'static>(&self, callback: F) {
         *self.on_connect.borrow_mut() = Some(Rc::new(callback));
     }

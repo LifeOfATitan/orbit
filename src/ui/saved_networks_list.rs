@@ -8,9 +8,7 @@ use crate::dbus::network_manager::SavedNetwork;
 pub struct SavedNetworksList {
     container: gtk::Box,
     list_box: gtk::Box,
-    refresh_button: gtk::Button,
     networks: Rc<RefCell<Vec<SavedNetwork>>>,
-    on_forget: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
     on_autoconnect_toggle: Rc<RefCell<Option<Rc<dyn Fn(String, bool)>>>>,
 }
 
@@ -38,26 +36,10 @@ impl SavedNetworksList {
         scrolled.set_child(Some(&list_box));
         container.append(&scrolled);
         
-        let footer = gtk::Box::builder()
-            .css_classes(["orbit-footer"])
-            .margin_top(8)
-            .build();
-        
-        let refresh_button = gtk::Button::builder()
-            .label(" Refresh Saved Networks")
-            .css_classes(["orbit-button", "primary", "flat"])
-            .hexpand(true)
-            .build();
-        
-        footer.append(&refresh_button);
-        container.append(&footer);
-        
         let list = Self {
             container,
             list_box,
-            refresh_button,
             networks: Rc::new(RefCell::new(Vec::new())),
-            on_forget: Rc::new(RefCell::new(None)),
             on_autoconnect_toggle: Rc::new(RefCell::new(None)),
         };
         
@@ -139,7 +121,6 @@ impl SavedNetworksList {
             .focusable(true)
             .build();
         
-        // Visual focus feedback
         let row_focus = row.clone();
         let focus_in = gtk::EventControllerFocus::new();
         focus_in.connect_enter(move |_| {
@@ -245,33 +226,11 @@ impl SavedNetworksList {
             }
         });
         
-        let forget_btn = gtk::Button::builder()
-            .label("Forget")
-            .css_classes(["orbit-button", "destructive", "flat"])
-            .build();
-        
-        let path = network.path.clone();
-        let on_forget = self.on_forget.clone();
-        forget_btn.connect_clicked(move |_| {
-            if let Some(callback) = on_forget.borrow().as_ref() {
-                callback(path.clone());
-            }
-        });
-        
-        row.append(&forget_btn);
         row
     }
     
     pub fn widget(&self) -> &gtk::Box {
         &self.container
-    }
-    
-    pub fn refresh_button(&self) -> &gtk::Button {
-        &self.refresh_button
-    }
-    
-    pub fn set_on_forget<F: Fn(String) + 'static>(&self, callback: F) {
-        *self.on_forget.borrow_mut() = Some(Rc::new(callback));
     }
     
     pub fn set_on_autoconnect_toggle<F: Fn(String, bool) + 'static>(&self, callback: F) {

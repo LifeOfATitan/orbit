@@ -131,10 +131,6 @@ impl BluetoothManager {
         None
     }
     
-    pub async fn is_available(&self) -> bool {
-        self.adapter_path.is_some()
-    }
-    
     pub async fn is_powered(&self) -> zbus::Result<bool> {
         let adapter = self.adapter_path.as_ref()
             .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;

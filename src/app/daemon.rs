@@ -1,7 +1,8 @@
 use std::io::{Read, Write};
-use std::os::unix::net::{UnixListener, UnixStream};
+use std::os::unix::net::{UnixStream as StdUnixStream};
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
+use tokio::net::UnixListener;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use gtk4::glib;
 
 const SOCKET_NAME: &str = "orbit.sock";
@@ -60,25 +61,44 @@ impl DaemonCommand {
     }
 }
 
+fn get_socket_path() -> PathBuf {
+    let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
+        .unwrap_or_else(|_| {
+            let user = std::env::var("USER").unwrap_or_else(|_| "user".to_string());
+            let path = format!("/tmp/orbit-{}", user);
+            let _ = std::fs::create_dir_all(&path);
+            path
+        });
+    
+    PathBuf::from(&runtime_dir).join(SOCKET_NAME)
+}
+
 pub struct DaemonServer {
     listener: Option<UnixListener>,
+    path: PathBuf,
 }
 
 impl DaemonServer {
-    pub fn new() -> Result<Self, std::io::Error> {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-            .unwrap_or_else(|_| format!("/tmp/orbit-{}", std::process::id()));
-        let socket_path = PathBuf::from(&runtime_dir).join(SOCKET_NAME);
+    pub async fn new() -> Result<Self, std::io::Error> {
+        let socket_path = get_socket_path();
         
         if socket_path.exists() {
-            std::fs::remove_file(&socket_path)?;
+            // Check if daemon is actually running
+            if let Ok(_) = StdUnixStream::connect(&socket_path) {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::AddrInUse,
+                    "Daemon is already running",
+                ));
+            }
+            // Stale socket, remove it
+            let _ = std::fs::remove_file(&socket_path);
         }
         
         let listener = UnixListener::bind(&socket_path)?;
-        listener.set_nonblocking(true)?;
         
         Ok(Self {
             listener: Some(listener),
+            path: socket_path,
         })
     }
     
@@ -86,40 +106,49 @@ impl DaemonServer {
     where
         F: Fn(DaemonCommand) + Send + 'static,
     {
-        let listener = Arc::new(Mutex::new(self.listener.take().unwrap()));
-        
-        glib::spawn_future_local(async move {
-            loop {
-                if let Ok((mut stream, _)) = listener.lock().unwrap().accept() {
-                    let mut buf = [0u8; 64];
-                    if let Ok(n) = stream.read(&mut buf) {
-                        if n > 0 {
-                            if let Some(cmd) = DaemonCommand::from_bytes(&buf[..n]) {
-                                callback(cmd);
-                                let _ = stream.write_all(b"ok");
-                            } else {
-                                let _ = stream.write_all(b"unknown");
+        if let Some(listener) = self.listener.take() {
+            glib::spawn_future_local(async move {
+                loop {
+                    match listener.accept().await {
+                        Ok((mut stream, _)) => {
+                            let mut buf = [0u8; 64];
+                            match stream.read(&mut buf).await {
+                                Ok(n) if n > 0 => {
+                                    if let Some(cmd) = DaemonCommand::from_bytes(&buf[..n]) {
+                                        callback(cmd);
+                                        let _ = stream.write_all(b"ok").await;
+                                    } else {
+                                        let _ = stream.write_all(b"unknown").await;
+                                    }
+                                }
+                                _ => {}
                             }
+                        }
+                        Err(e) => {
+                            log::error!("Socket accept error: {}", e);
                         }
                     }
                 }
-                glib::timeout_future(std::time::Duration::from_millis(50)).await;
-            }
-        });
+            });
+        }
     }
 }
 
-
+impl Drop for DaemonServer {
+    fn drop(&mut self) {
+        if self.path.exists() {
+            let _ = std::fs::remove_file(&self.path);
+        }
+    }
+}
 
 pub struct DaemonClient;
 
 impl DaemonClient {
     pub fn send_command(cmd: DaemonCommand) -> Result<String, std::io::Error> {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-            .unwrap_or_else(|_| "/tmp".to_string());
-        let socket_path = PathBuf::from(&runtime_dir).join(SOCKET_NAME);
+        let socket_path = get_socket_path();
         
-        let mut stream = UnixStream::connect(&socket_path)?;
+        let mut stream = StdUnixStream::connect(&socket_path)?;
         stream.write_all(cmd.to_string().as_bytes())?;
         stream.flush()?;
         
@@ -129,15 +158,13 @@ impl DaemonClient {
     }
     
     pub fn is_daemon_running() -> bool {
-        let runtime_dir = std::env::var("XDG_RUNTIME_DIR")
-            .unwrap_or_else(|_| "/tmp".to_string());
-        let socket_path = PathBuf::from(&runtime_dir).join(SOCKET_NAME);
+        let socket_path = get_socket_path();
         
         if !socket_path.exists() {
             return false;
         }
         
-        match UnixStream::connect(&socket_path) {
+        match StdUnixStream::connect(&socket_path) {
             Ok(_) => true,
             Err(_) => {
                 let _ = std::fs::remove_file(&socket_path);

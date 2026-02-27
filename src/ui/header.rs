@@ -6,12 +6,7 @@ use std::rc::Rc;
 #[derive(Clone)]
 pub struct Header {
     container: gtk::Box,
-    wifi_tab: gtk::Button,
-    saved_tab: gtk::Button,
-    bluetooth_tab: gtk::Button,
     power_switch: gtk::Switch,
-    power_box: gtk::Box,
-    power_label: gtk::Label,
     is_programmatic_update: Rc<RefCell<bool>>,
 }
 
@@ -95,18 +90,52 @@ impl Header {
         container.append(&title_row);
         container.append(&tab_bar);
         
-        let header = Self {
-            container,
-            wifi_tab,
-            saved_tab,
-            bluetooth_tab,
-            power_switch,
-            power_box,
-            power_label,
-            is_programmatic_update: Rc::new(RefCell::new(false)),
-        };
+        // Tab switching logic (local to Header)
+        let wifi_tab_ref = wifi_tab.clone();
+        let saved_tab_ref = saved_tab.clone();
+        let bluetooth_tab_ref = bluetooth_tab.clone();
+        let p_box = power_box.clone();
+        let p_label = power_label.clone();
 
-        header
+        wifi_tab.connect_clicked(move |_| {
+            wifi_tab_ref.add_css_class("active");
+            saved_tab_ref.remove_css_class("active");
+            bluetooth_tab_ref.remove_css_class("active");
+            p_box.set_visible(true);
+            p_label.set_label("WiFi");
+        });
+
+        let wifi_tab_ref2 = wifi_tab.clone();
+        let saved_tab_ref2 = saved_tab.clone();
+        let bluetooth_tab_ref2 = bluetooth_tab.clone();
+        let p_box2 = power_box.clone();
+
+        saved_tab.connect_clicked(move |_| {
+            wifi_tab_ref2.remove_css_class("active");
+            saved_tab_ref2.add_css_class("active");
+            bluetooth_tab_ref2.remove_css_class("active");
+            p_box2.set_visible(false);
+        });
+
+        let wifi_tab_ref3 = wifi_tab.clone();
+        let saved_tab_ref3 = saved_tab.clone();
+        let bluetooth_tab_ref3 = bluetooth_tab.clone();
+        let p_box3 = power_box.clone();
+        let p_label3 = power_label.clone();
+
+        bluetooth_tab.connect_clicked(move |_| {
+            wifi_tab_ref3.remove_css_class("active");
+            saved_tab_ref3.remove_css_class("active");
+            bluetooth_tab_ref3.add_css_class("active");
+            p_box3.set_visible(true);
+            p_label3.set_label("Bluetooth");
+        });
+
+        Self {
+            container,
+            power_switch,
+            is_programmatic_update: Rc::new(RefCell::new(false)),
+        }
     }
     
     pub fn widget(&self) -> &gtk::Box {
@@ -120,47 +149,7 @@ impl Header {
         *self.is_programmatic_update.borrow_mut() = false;
     }
     
-    pub fn is_programmatic_update(&self) -> Rc<RefCell<bool>> {
-        self.is_programmatic_update.clone()
-    }
-    
-    pub fn wifi_tab(&self) -> &gtk::Button {
-        &self.wifi_tab
-    }
-    
-    pub fn saved_tab(&self) -> &gtk::Button {
-        &self.saved_tab
-    }
-
-    pub fn bluetooth_tab(&self) -> &gtk::Button {
-        &self.bluetooth_tab
-    }
-
     pub fn power_switch(&self) -> &gtk::Switch {
         &self.power_switch
-    }
-
-    pub fn set_tab(&self, tab: &str) {
-        self.wifi_tab.remove_css_class("active");
-        self.saved_tab.remove_css_class("active");
-        self.bluetooth_tab.remove_css_class("active");
-
-        match tab {
-            "wifi" => {
-                self.wifi_tab.add_css_class("active");
-                self.power_box.set_visible(true);
-                self.power_label.set_label("WiFi");
-            }
-            "saved" => {
-                self.saved_tab.add_css_class("active");
-                self.power_box.set_visible(false);
-            }
-            "bluetooth" => {
-                self.bluetooth_tab.add_css_class("active");
-                self.power_box.set_visible(true);
-                self.power_label.set_label("Bluetooth");
-            }
-            _ => {}
-        }
     }
 }

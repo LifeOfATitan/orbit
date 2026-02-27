@@ -385,11 +385,7 @@ impl NetworkManager {
         None
     }
 
-    pub async fn has_saved_connection(&self, ssid: &str) -> bool {
-        self.find_connection_by_ssid(ssid).await.is_some()
-    }
-
-    pub async fn connect(&self, ssid: &str, password: Option<&str>, device_path: &str) -> zbus::Result<()> {
+    pub async fn connect_to_network(&self, ssid: &str, password: Option<&str>, device_path: &str) -> zbus::Result<()> {
         let dev_path: zbus::zvariant::ObjectPath = device_path.try_into()
             .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
 
@@ -516,7 +512,6 @@ impl NetworkManager {
                 Err(_) => continue,
             };
 
-            // Safely fetch connection type
             let conn_type_reply = self.conn
                 .call_method(
                     Some("org.freedesktop.NetworkManager"),
@@ -541,7 +536,6 @@ impl NetworkManager {
                 continue;
             }
 
-            // Safely fetch specific object (AP path)
             let specific_obj_reply = self.conn
                 .call_method(
                     Some("org.freedesktop.NetworkManager"),
@@ -561,7 +555,6 @@ impl NetworkManager {
                 .and_then(|v| zbus::zvariant::OwnedObjectPath::try_from(v).ok())
                 .unwrap_or_else(|| "/".try_into().unwrap());
 
-            // Safely fetch active ID (SSID)
             let active_id_reply = self.conn
                 .call_method(
                     Some("org.freedesktop.NetworkManager"),
@@ -691,21 +684,6 @@ impl NetworkManager {
             }
         }
         Vec::new()
-    }
-    
-    pub async fn forget_network(&self, path: &str) -> zbus::Result<()> {
-        let path_obj: zbus::zvariant::ObjectPath = path.try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
-        self.conn
-            .call_method(
-                Some("org.freedesktop.NetworkManager"),
-                &path_obj,
-                Some("org.freedesktop.NetworkManager.Settings.Connection"),
-                "Delete",
-                &(),
-            )
-            .await?;
-        Ok(())
     }
     
     pub async fn set_autoconnect(&self, path: &str, autoconnect: bool) -> zbus::Result<()> {

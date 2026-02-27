@@ -91,18 +91,6 @@ impl DeviceList {
         self.list_box.append(&placeholder);
     }
     
-    pub fn show_no_adapter(&self) {
-        while let Some(child) = self.list_box.first_child() {
-            self.list_box.remove(&child);
-        }
-        let placeholder = gtk::Label::builder()
-            .label("No Bluetooth adapter present")
-            .css_classes(["orbit-placeholder"])
-            .build();
-        self.list_box.append(&placeholder);
-        self.scan_button.set_sensitive(false);
-    }
-    
     pub fn set_action_state(&self, path: Option<String>, action: Option<DeviceAction>) {
         *self.action_path.borrow_mut() = path;
         *self.action_type.borrow_mut() = action;
