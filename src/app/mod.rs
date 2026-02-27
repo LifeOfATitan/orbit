@@ -10,7 +10,7 @@ pub mod daemon;
 use crate::config::Config;
 use crate::theme::Theme;
 use crate::dbus::{NetworkManager, BluetoothManager};
-use crate::dbus::network_manager::{AccessPoint, SecurityType, SavedNetwork, NetworkDetails};
+use crate::dbus::network_manager::{AccessPoint, SecurityType, SavedNetwork, NetworkDetails, VpnConnection};
 use crate::dbus::bluez::BluetoothDevice;
 use crate::ui::{OrbitWindow, DeviceAction};
 use daemon::{DaemonServer, DaemonCommand};
@@ -19,6 +19,7 @@ enum AppEvent {
     WifiScanResult(Vec<AccessPoint>),
     SavedNetworksResult(Vec<SavedNetwork>),
     NetworkDetailsResult(NetworkDetails),
+    VpnConnectionsResult(Vec<VpnConnection>),
     BtScanResult(Vec<BluetoothDevice>),
     WifiPowerState(bool),
     BtPowerState(bool),
@@ -244,6 +245,9 @@ fn setup_events_receiver(
                 }
                 AppEvent::SavedNetworksResult(networks) => {
                     win.saved_networks_list().set_networks(networks);
+                }
+                AppEvent::VpnConnectionsResult(networks) => {
+                    win.vpn_list().set_networks(networks);
                 }
                 AppEvent::NetworkDetailsResult(details) => {
                     win.show_network_details(&details);
@@ -497,6 +501,27 @@ fn setup_ui_callbacks(
             if let Some(ref nm_inst) = *nm_guard {
                 if let Ok(saved) = rt.block_on(async { nm_inst.get_saved_networks().await }) {
                     let _ = tx.send_blocking(AppEvent::SavedNetworksResult(saved));
+                }
+            }
+        });
+    });
+
+    let stack_vpn = stack.clone();
+    let header_vpn = header.clone();
+    let nm_vpn = nm.clone();
+    let rt_vpn = rt.clone();
+    let tx_vpn = tx.clone();
+    header.vpn_tab().connect_clicked(move |_| {
+        stack_vpn.set_visible_child_name("vpn");
+        header_vpn.set_tab("vpn");
+        let nm = nm_vpn.clone();
+        let rt = rt_vpn.clone();
+        let tx = tx_vpn.clone();
+        std::thread::spawn(move || {
+            let nm_guard = nm.lock().unwrap();
+            if let Some(ref nm_inst) = *nm_guard {
+                if let Ok(vpn) = rt.block_on(async { nm_inst.get_saved_vpns().await }) {
+                    let _ = tx.send_blocking(AppEvent::VpnConnectionsResult(vpn));
                 }
             }
         });
