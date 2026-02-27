@@ -563,6 +563,21 @@ impl NetworkManager {
         Ok(())
     }
 
+    pub async fn forget_network(&self, path: &str) -> zbus::Result<()> {
+        let path_obj: zbus::zvariant::ObjectPath = path.try_into()
+            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+        self.conn
+            .call_method(
+                Some("org.freedesktop.NetworkManager"),
+                &path_obj,
+                Some("org.freedesktop.NetworkManager.Settings.Connection"),
+                "Delete",
+                &(),
+            )
+            .await?;
+        Ok(())
+    }
+
     pub async fn get_saved_networks(&self) -> zbus::Result<Vec<SavedNetwork>> {
         let connections_reply = self.conn
             .call_method(

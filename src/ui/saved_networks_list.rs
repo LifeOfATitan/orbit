@@ -10,6 +10,7 @@ pub struct SavedNetworksList {
     list_box: gtk::Box,
     networks: Rc<RefCell<Vec<SavedNetwork>>>,
     on_autoconnect_toggle: Rc<RefCell<Option<Rc<dyn Fn(String, bool)>>>>,
+    on_forget: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
 }
 
 impl SavedNetworksList {
@@ -41,6 +42,7 @@ impl SavedNetworksList {
             list_box,
             networks: Rc::new(RefCell::new(Vec::new())),
             on_autoconnect_toggle: Rc::new(RefCell::new(None)),
+            on_forget: Rc::new(RefCell::new(None)),
         };
         
         list.show_loading();
@@ -208,7 +210,15 @@ impl SavedNetworksList {
         autoconnect_box.append(&autoconnect_switch);
         row.append(&autoconnect_box);
         
-        let path = network.path.clone();
+        // Forget Button
+        let forget_btn = gtk::Button::builder()
+            .label("Forget")
+            .css_classes(["orbit-button", "destructive", "flat"])
+            .valign(gtk::Align::Center)
+            .build();
+        row.append(&forget_btn);
+        
+        let path_toggle = network.path.clone();
         let on_toggle = self.on_autoconnect_toggle.clone();
         let is_user_action = Rc::new(RefCell::new(false));
         let is_user_action_clone = is_user_action.clone();
@@ -221,8 +231,16 @@ impl SavedNetworksList {
         autoconnect_switch.connect_state_notify(move |switch| {
             if *is_user_action.borrow() {
                 if let Some(callback) = on_toggle.borrow().as_ref() {
-                    callback(path.clone(), switch.is_active());
+                    callback(path_toggle.clone(), switch.is_active());
                 }
+            }
+        });
+        
+        let path_forget = network.path.clone();
+        let on_forget = self.on_forget.clone();
+        forget_btn.connect_clicked(move |_| {
+            if let Some(callback) = on_forget.borrow().as_ref() {
+                callback(path_forget.clone());
             }
         });
         
@@ -235,5 +253,9 @@ impl SavedNetworksList {
     
     pub fn set_on_autoconnect_toggle<F: Fn(String, bool) + 'static>(&self, callback: F) {
         *self.on_autoconnect_toggle.borrow_mut() = Some(Rc::new(callback));
+    }
+
+    pub fn set_on_forget<F: Fn(String) + 'static>(&self, callback: F) {
+        *self.on_forget.borrow_mut() = Some(Rc::new(callback));
     }
 }

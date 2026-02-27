@@ -95,7 +95,7 @@ impl Header {
         container.append(&title_row);
         container.append(&tab_bar);
         
-        Self {
+        let header = Self {
             container,
             wifi_tab,
             saved_tab,
@@ -104,7 +104,9 @@ impl Header {
             power_box,
             power_label,
             is_programmatic_update: Rc::new(RefCell::new(false)),
-        }
+        };
+
+        header
     }
     
     pub fn widget(&self) -> &gtk::Box {
@@ -118,24 +120,24 @@ impl Header {
         *self.is_programmatic_update.borrow_mut() = false;
     }
     
-    pub fn is_programmatic_update(&self) -> bool {
-        *self.is_programmatic_update.borrow()
+    pub fn is_programmatic_update(&self) -> Rc<RefCell<bool>> {
+        self.is_programmatic_update.clone()
     }
     
-    pub fn power_switch(&self) -> &gtk::Switch {
-        &self.power_switch
-    }
-
     pub fn wifi_tab(&self) -> &gtk::Button {
         &self.wifi_tab
     }
-
+    
     pub fn saved_tab(&self) -> &gtk::Button {
         &self.saved_tab
     }
 
     pub fn bluetooth_tab(&self) -> &gtk::Button {
         &self.bluetooth_tab
+    }
+
+    pub fn power_switch(&self) -> &gtk::Switch {
+        &self.power_switch
     }
 
     pub fn set_tab(&self, tab: &str) {

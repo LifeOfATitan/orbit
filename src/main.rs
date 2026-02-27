@@ -38,6 +38,7 @@ enum Commands {
 }
 
 fn main() {
+    env_logger::init();
     let cli = Cli::parse();
     
     let config = Config::load();

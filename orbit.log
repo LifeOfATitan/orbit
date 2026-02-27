@@ -1,0 +1,255 @@
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:173:3-30: No property named "-gtktoolbutton-icon-spacing"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:174:3-37: No property named "-gtktextview-error-underline-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:175:3-39: No property named "-gtkscrolledwindow-scrollbar-spacing"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:176:3-34: No property named "-gtktoolitemgroup-expander-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:177:3-31: No property named "-gtkwidget-text-handle-width"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:178:3-32: No property named "-gtkwidget-text-handle-height"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:179:3-28: No property named "-gtkdialog-button-spacing"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:180:3-32: No property named "-gtkdialog-action-area-border"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.265: Theme parser error: gtk.css:185:3-22: No property named "-gtk-outline-radius"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.266: Theme parser error: gtk.css:311:3-19: No property named "-gtk-icon-effect"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.266: Theme parser error: gtk.css:1464:23-37: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.266: Theme parser error: gtk.css:1475:23-37: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:2717:3-29: No property named "-gtkwidget-window-dragging"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3103:3-26: No property named "-gtkarrow-arrow-scaling"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3342:3-36: No property named "-gtktreeview-horizontal-separator"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3343:3-31: No property named "-gtktreeview-grid-line-width"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3344:3-33: No property named "-gtktreeview-grid-line-pattern"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3345:3-31: No property named "-gtktreeview-tree-line-width"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3346:3-33: No property named "-gtktreeview-tree-line-pattern"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3347:3-29: No property named "-gtktreeview-expander-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3470:3-29: No property named "-gtkwidget-window-dragging"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3956:3-37: No property named "-gtkscrollbar-has-backward-stepper"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.267: Theme parser error: gtk.css:3957:3-36: No property named "-gtkscrollbar-has-forward-stepper"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.268: Theme parser error: gtk.css:5039:21-35: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.268: Theme parser error: gtk.css:5056:21-35: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.268: Theme parser error: gtk.css:5073:21-35: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.268: Theme parser error: gtk.css:5090:21-35: Not a valid image
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:8299:3-26: No property named "-pnldockbin-handle-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:8406:3-26: No property named "-pnldockbin-handle-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:8609:3-28: No property named "-gdmainiconview-icon-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9846:3-27: No property named "-unitydecoration-extents"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9847:3-33: No property named "-unitydecoration-input-extents"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9848:3-35: No property named "-unitydecoration-shadow-offset-x"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9849:3-35: No property named "-unitydecoration-shadow-offset-y"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9850:3-39: No property named "-unitydecoration-active-shadow-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9851:3-40: No property named "-unitydecoration-active-shadow-radius"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9852:3-41: No property named "-unitydecoration-inactive-shadow-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9853:3-42: No property named "-unitydecoration-inactive-shadow-radius"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9854:3-29: No property named "-unitydecoration-glow-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9855:3-30: No property named "-unitydecoration-glow-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9856:3-32: No property named "-unitydecoration-title-indent"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9857:3-30: No property named "-unitydecoration-title-fade"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9858:3-35: No property named "-unitydecoration-title-alignment"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:9996:3-29: No property named "-gtkwidget-window-dragging"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:10104:3-29: No property named "-natrayapplet-icon-padding"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:10105:3-26: No property named "-natrayapplet-icon-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.270: Theme parser error: gtk.css:10109:3-29: No property named "-panelmenubar-icon-visible"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:10246:3-26: No property named "-gtkarrow-arrow-scaling"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:10331:3-26: No property named "-gtkarrow-arrow-scaling"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11299:3-30: No property named "-xfwmtabwinwidget-icon-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11300:3-33: No property named "-xfwmtabwinwidget-preview-size"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11459:3-41: No property named "-nemoplacestreeview-disk-full-bg-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11460:3-41: No property named "-nemoplacestreeview-disk-full-fg-color"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11461:3-42: No property named "-nemoplacestreeview-disk-full-bar-width"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11462:3-43: No property named "-nemoplacestreeview-disk-full-bar-radius"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11463:3-47: No property named "-nemoplacestreeview-disk-full-bottom-padding"
+
+(orbit:185649): Gtk-WARNING **: 01:50:58.271: Theme parser error: gtk.css:11464:3-43: No property named "-nemoplacestreeview-disk-full-max-length"
+[2026-02-27T06:50:58Z INFO  orbit::app::daemon] Starting daemon on socket: "/run/user/1000/orbit.sock"
+[2026-02-27T06:50:58Z INFO  orbit::app] Not connected yet, waiting for NetworkManager...
+[2026-02-27T06:50:58Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:50:58Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:50:58Z INFO  orbit::app] Connected to MyOptimum 6e5dcf after 0s
+
+(orbit:185649): Gtk-WARNING **: 01:51:01.479: GtkImage 0x555aabe0cdc0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:01.479: GtkImage 0x555aabd6c400 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+[2026-02-27T06:51:01Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:51:05Z INFO  orbit::app] UI: Syncing Bluetooth switch to true
+[2026-02-27T06:51:07Z INFO  orbit::app] Toggle: Power switch active notify to false (Active tab: 'bluetooth')
+[2026-02-27T06:51:07Z INFO  orbit::app] Toggle: Executing Bluetooth power change to false
+[2026-02-27T06:51:07Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:09Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:51:09Z INFO  orbit::app] Toggle: Ignoring programmatic update
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadcf6d10 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aacd4d4f0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadcffef0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd00b70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd09df0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd0aa70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd13e70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd14af0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd1def0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd1eb70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd27f70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd28bf0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd31ff0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd32c70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd3c070 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd3ccf0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd460f0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd46d70 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd501a0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd50e20 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd5a220 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd5aea0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd642a0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd64f20 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd6e320 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:11.087: GtkImage 0x555aadd6efa0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+[2026-02-27T06:51:12Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:12Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:14Z INFO  orbit::app] Toggle: Power switch active notify to true (Active tab: 'bluetooth')
+[2026-02-27T06:51:14Z INFO  orbit::app] Toggle: Executing Bluetooth power change to true
+[2026-02-27T06:51:14Z INFO  orbit::app] UI: Syncing Bluetooth switch to true
+[2026-02-27T06:51:16Z INFO  orbit::app] Toggle: Power switch active notify to false (Active tab: 'bluetooth')
+[2026-02-27T06:51:16Z INFO  orbit::app] Toggle: Executing Bluetooth power change to false
+[2026-02-27T06:51:16Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:17Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:51:17Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:32Z INFO  orbit::app] UI: Syncing WiFi switch to true
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aac858750 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aaddaefa0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aac746ad0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aaddb1560 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aac50c670 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aaddb2d30 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae0b4de0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aadcf7700 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae09b240 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae09beb0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aac29d0d0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aac29dd40 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae06c0d0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae06cd40 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae1ec8e0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae1ed550 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae196740 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae1973b0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae1a05d0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae1a1240 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae2ca530 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae2cb1a0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae2d4390 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae325080 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae32e270 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+
+(orbit:185649): Gtk-WARNING **: 01:51:35.777: GtkImage 0x555aae32eee0 reported baselines of minimum -2147483648 and natural -2147483648, but sizes of minimum 16 and natural 16. Baselines must be inside the widget size.
+[2026-02-27T06:51:37Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:37Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:39Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:51:39Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:43Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:43Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:51Z INFO  orbit::app] UI: Syncing WiFi switch to true
+[2026-02-27T06:51:51Z INFO  orbit::app] Toggle: Ignoring programmatic update
+[2026-02-27T06:51:54Z INFO  orbit::app] UI: Syncing Bluetooth switch to false
+[2026-02-27T06:51:54Z INFO  orbit::app] Toggle: Ignoring programmatic update
