@@ -15,6 +15,10 @@
 - [x] WPA3/SAE security support
 - [x] One-click reconnect for saved networks
 - [x] Real-time configuration hot-reload (margins/position)
+- [x] Modernized Async Unix Socket Daemon (High Performance)
+- [x] Automatic stale socket cleanup & graceful shutdown
+- [x] Visual connection/disconnect indicators (Animated Spinners)
+- [x] Smart autoconnect wait logic (Boot Performance)
 
 ## Planned
 - [ ] Tab-specific launch (toggle directly into WiFi or Bluetooth tab via flag)
@@ -24,4 +28,3 @@
 - [ ] Bluetooth device details view
 - [ ] Confirmation dialogs for destructive actions
 - [ ] Batch D-Bus calls (performance)
-- [ ] Proper Unix socket cleanup

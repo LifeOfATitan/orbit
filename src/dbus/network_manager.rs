@@ -339,6 +339,10 @@ impl NetworkManager {
         
         None
     }
+
+    pub async fn has_saved_connection(&self, ssid: &str) -> bool {
+        self.find_connection_by_ssid(ssid).await.is_some()
+    }
     
     async fn find_connection_by_ssid(&self, ssid: &str) -> Option<String> {
         let connections_reply = self.conn
@@ -353,28 +357,39 @@ impl NetworkManager {
 
         let connections: Vec<zbus::zvariant::OwnedObjectPath> = match connections_reply {
             Ok(r) => r.body().deserialize().unwrap_or_default(),
-            Err(_) => return None,
+            Err(e) => {
+                log::error!("Failed to list connections: {}", e);
+                return None;
+            },
         };
         
         for conn_path in connections {
             if let Ok(settings) = self.get_connection_settings_raw(&conn_path).await {
+                // Check for 802-11-wireless.ssid
                 if let Some(wireless_map) = settings.get("802-11-wireless") {
                     if let Some(v) = wireless_map.get("ssid") {
-                        if let zbus::zvariant::Value::Array(a) = &**v {
-                            let bytes: Vec<u8> = a.iter().filter_map(|iv| {
-                                u8::try_from(iv).ok()
-                            }).collect();
-                            if !bytes.is_empty() && String::from_utf8_lossy(&bytes) == ssid {
+                        let ssid_bytes = if let zbus::zvariant::Value::Array(a) = &**v {
+                            a.iter().filter_map(|iv| u8::try_from(iv).ok()).collect::<Vec<u8>>()
+                        } else {
+                            Vec::new()
+                        };
+                        
+                        if !ssid_bytes.is_empty() {
+                            let stored_ssid = String::from_utf8_lossy(&ssid_bytes).to_string();
+                            // Direct byte comparison or trimmed string comparison
+                            if stored_ssid == ssid || stored_ssid.trim() == ssid.trim() || ssid_bytes == ssid.as_bytes() {
                                 return Some(conn_path.to_string());
                             }
                         }
                     }
                 }
                 
+                // Also check connection.id (SSID name often used here)
                 if let Some(connection_map) = settings.get("connection") {
                     if let Some(id_owned) = connection_map.get("id") {
-                        if let Ok(id) = <&str>::try_from(&**id_owned) {
-                            if id == ssid {
+                        let val: &zbus::zvariant::Value = &**id_owned;
+                        if let Ok(id) = <&str>::try_from(val) {
+                            if id == ssid || id.trim() == ssid.trim() {
                                 return Some(conn_path.to_string());
                             }
                         }
@@ -392,6 +407,7 @@ impl NetworkManager {
         if let Some(existing_path_str) = self.find_connection_by_ssid(ssid).await {
             let existing_path = zbus::zvariant::ObjectPath::try_from(existing_path_str.as_str()).unwrap();
             let specific_object = zbus::zvariant::ObjectPath::try_from("/").unwrap();
+            
             self.conn.call_method(
                 Some("org.freedesktop.NetworkManager"),
                 "/org/freedesktop/NetworkManager",
@@ -504,7 +520,7 @@ impl NetworkManager {
         Ok(())
     }
     
-    pub async fn disconnect_ap(&self, ssid: &str, ap_path: &str) -> zbus::Result<()> {
+    pub async fn disconnect_ap(&self, ssid: &str, _ap_path: &str) -> zbus::Result<()> {
         let active_paths = self.get_active_connection_paths().await;
         for path_str in active_paths {
             let path = match zbus::zvariant::ObjectPath::try_from(path_str.as_str()) {
@@ -512,50 +528,7 @@ impl NetworkManager {
                 Err(_) => continue,
             };
 
-            let conn_type_reply = self.conn
-                .call_method(
-                    Some("org.freedesktop.NetworkManager"),
-                    &path,
-                    Some("org.freedesktop.DBus.Properties"),
-                    "Get",
-                    &("org.freedesktop.NetworkManager.Connection.Active", "Type"),
-                )
-                .await;
-
-            let conn_type_val = match conn_type_reply {
-                Ok(r) => r.body().deserialize::<zbus::zvariant::OwnedValue>(),
-                Err(_) => continue,
-            };
-
-            let conn_type = match conn_type_val {
-                Ok(v) => String::try_from(zbus::zvariant::Value::from(v)).unwrap_or_default(),
-                Err(_) => continue,
-            };
-            
-            if conn_type != "802-11-wireless" {
-                continue;
-            }
-
-            let specific_obj_reply = self.conn
-                .call_method(
-                    Some("org.freedesktop.NetworkManager"),
-                    &path,
-                    Some("org.freedesktop.DBus.Properties"),
-                    "Get",
-                    &("org.freedesktop.NetworkManager.Connection.Active", "SpecificObject"),
-                )
-                .await;
-
-            let specific_obj_val = match specific_obj_reply {
-                Ok(r) => r.body().deserialize::<zbus::zvariant::OwnedValue>().ok(),
-                Err(_) => None,
-            };
-            
-            let specific_obj = specific_obj_val
-                .and_then(|v| zbus::zvariant::OwnedObjectPath::try_from(v).ok())
-                .unwrap_or_else(|| "/".try_into().unwrap());
-
-            let active_id_reply = self.conn
+            let id_reply = self.conn
                 .call_method(
                     Some("org.freedesktop.NetworkManager"),
                     &path,
@@ -565,16 +538,16 @@ impl NetworkManager {
                 )
                 .await;
 
-            let active_id_val = match active_id_reply {
+            let id_val = match id_reply {
                 Ok(r) => r.body().deserialize::<zbus::zvariant::OwnedValue>().ok(),
                 Err(_) => None,
             };
             
-            let active_id = active_id_val
+            let id = id_val
                 .and_then(|v| String::try_from(zbus::zvariant::Value::from(v)).ok())
                 .unwrap_or_default();
 
-            if specific_obj.as_str() == ap_path || active_id == ssid {
+            if id == ssid {
                 self.conn
                     .call_method(
                         Some("org.freedesktop.NetworkManager"),

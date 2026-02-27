@@ -1,72 +1,24 @@
-use zbus::{Connection, interface};
-use std::collections::HashMap;
+use zbus::Connection;
+use zbus::zvariant::ObjectPath;
 
-struct BluetoothAgent;
-
-#[interface(name = "org.bluez.Agent1")]
-impl BluetoothAgent {
-    async fn release(&self) {}
-    async fn request_pin_code(&self, _device: zbus::zvariant::ObjectPath<'_>) -> String { String::new() }
-    async fn display_pin_code(&self, _device: zbus::zvariant::ObjectPath<'_>, _pincode: String) {}
-    async fn request_passkey(&self, _device: zbus::zvariant::ObjectPath<'_>) -> u32 { 0 }
-    async fn display_passkey(&self, _device: zbus::zvariant::ObjectPath<'_>, _passkey: u32, _entered: u16) {}
-    async fn request_confirmation(&self, _device: zbus::zvariant::ObjectPath<'_>, _passkey: u32) {}
-    async fn request_authorization(&self, _device: zbus::zvariant::ObjectPath<'_>) {}
-    async fn authorize_service(&self, _device: zbus::zvariant::ObjectPath<'_>, _uuid: String) {}
-    async fn cancel(&self) {}
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum DeviceType {
-    Unknown,
-    Phone,
-    Computer,
-    Audio,
-    Headphones,
-    Keyboard,
-    Mouse,
-    Other,
-}
-
-impl DeviceType {
-    pub fn icon_name(&self) -> &'static str {
-        match self {
-            DeviceType::Phone => "smartphone-symbolic",
-            DeviceType::Computer => "computer-symbolic",
-            DeviceType::Audio => "audio-speakers-symbolic",
-            DeviceType::Headphones => "audio-headphones-symbolic",
-            DeviceType::Keyboard => "input-keyboard-symbolic",
-            DeviceType::Mouse => "input-mouse-symbolic",
-            _ => "bluetooth-symbolic",
-        }
-    }
-}
-
-impl From<u32> for DeviceType {
-    fn from(value: u32) -> Self {
-        match value {
-            1 | 2 => DeviceType::Computer,
-            3 => DeviceType::Phone,
-            4 | 5 | 6 => DeviceType::Audio,
-            7 => DeviceType::Headphones,
-            8 => DeviceType::Keyboard,
-            9 => DeviceType::Mouse,
-            _ => DeviceType::Other,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct BluetoothDevice {
     pub path: String,
     pub name: String,
-    pub device_type: DeviceType,
+    pub device_type: Option<DeviceType>,
     pub is_connected: bool,
     pub is_paired: bool,
     pub battery_percentage: Option<u8>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub enum DeviceType {
+    Audio,
+    Keyboard,
+    Mouse,
+    Phone,
+}
+
 pub struct BluetoothManager {
     conn: Connection,
     adapter_path: Option<String>,
@@ -75,104 +27,12 @@ pub struct BluetoothManager {
 impl BluetoothManager {
     pub async fn new() -> zbus::Result<Self> {
         let conn = Connection::system().await?;
-        let adapter_path = Self::find_adapter(&conn).await;
-        let manager = Self { conn, adapter_path };
-        
-        // Register agent for auto-confirmation
-        let _ = manager.register_agent().await;
-        
-        Ok(manager)
+        let adapter_path = Self::find_adapter(&conn).await?;
+        Ok(Self { conn, adapter_path })
     }
 
-    async fn register_agent(&self) -> zbus::Result<()> {
-        let agent_path = "/com/orbit/agent";
-        self.conn.object_server().at(agent_path, BluetoothAgent).await?;
-
-        let _ : () = self.conn.call_method(
-            Some("org.bluez"),
-            "/org/bluez",
-            Some("org.bluez.AgentManager1"),
-            "RegisterAgent",
-            &(zbus::zvariant::ObjectPath::try_from(agent_path)?, "NoInputNoOutput"),
-        ).await?.body().deserialize()?;
-
-        let _ : () = self.conn.call_method(
-            Some("org.bluez"),
-            "/org/bluez",
-            Some("org.bluez.AgentManager1"),
-            "RequestDefaultAgent",
-            &(zbus::zvariant::ObjectPath::try_from(agent_path)?),
-        ).await?.body().deserialize()?;
-
-        Ok(())
-    }
-    
-    async fn find_adapter(conn: &Connection) -> Option<String> {
-        let objects: HashMap<zbus::zvariant::OwnedObjectPath, HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>> = conn
-            .call_method(
-                Some("org.bluez"),
-                "/",
-                Some("org.freedesktop.DBus.ObjectManager"),
-                "GetManagedObjects",
-                &(),
-            )
-            .await
-            .ok()?
-            .body()
-            .deserialize()
-            .ok()
-            .unwrap_or_default();
-        
-        for path in objects.keys() {
-            if path.as_str().contains("/org/bluez/hci") && !path.as_str().contains("/dev_") {
-                return Some(path.to_string());
-            }
-        }
-        None
-    }
-    
-    pub async fn is_powered(&self) -> zbus::Result<bool> {
-        let adapter = self.adapter_path.as_ref()
-            .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
-        
-        let path: zbus::zvariant::ObjectPath = adapter.as_str().try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
-        let reply = self.conn
-            .call_method(
-                Some("org.bluez"),
-                &path,
-                Some("org.freedesktop.DBus.Properties"),
-                "Get",
-                &("org.bluez.Adapter1", "Powered"),
-            )
-            .await?
-            .body()
-            .deserialize::<zbus::zvariant::OwnedValue>()?;
-        
-        bool::try_from(reply).map_err(zbus::Error::from)
-    }
-    
-    pub async fn set_powered(&self, powered: bool) -> zbus::Result<()> {
-        let adapter = self.adapter_path.as_ref()
-            .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
-        
-        let path: zbus::zvariant::ObjectPath = adapter.as_str().try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
-        let value = zbus::zvariant::Value::Bool(powered);
-        self.conn
-            .call_method(
-                Some("org.bluez"),
-                &path,
-                Some("org.freedesktop.DBus.Properties"),
-                "Set",
-                &("org.bluez.Adapter1", "Powered", value),
-            )
-            .await?;
-        Ok(())
-    }
-    
-    pub async fn get_devices(&self) -> zbus::Result<Vec<BluetoothDevice>> {
-        let objects: HashMap<zbus::zvariant::OwnedObjectPath, HashMap<String, HashMap<String, zbus::zvariant::OwnedValue>>> = self.conn
+    async fn find_adapter(conn: &Connection) -> zbus::Result<Option<String>> {
+        let reply: std::collections::HashMap<zbus::zvariant::OwnedObjectPath, std::collections::HashMap<String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>>> = conn
             .call_method(
                 Some("org.bluez"),
                 "/",
@@ -183,66 +43,62 @@ impl BluetoothManager {
             .await?
             .body()
             .deserialize()?;
-        
-        let mut devices = Vec::new();
-        
-        for (path, interfaces) in objects {
-            if let Some(device_props) = interfaces.get("org.bluez.Device1") {
-                let name = device_props.get("Name")
-                    .and_then(|v| v.downcast_ref::<String>().ok())
-                    .map(|s| s.to_string())
-                    .unwrap_or_else(|| "Unknown".to_string());
-                
-                let is_connected = device_props.get("Connected")
-                    .and_then(|v| v.downcast_ref::<bool>().ok())
-                    .unwrap_or(false);
-                
-                let is_paired = device_props.get("Paired")
-                    .and_then(|v| v.downcast_ref::<bool>().ok())
-                    .unwrap_or(false);
-                
-                let battery = interfaces.get("org.bluez.Battery1")
-                    .and_then(|props| props.get("Percentage"))
-                    .and_then(|v| v.downcast_ref::<u8>().ok());
-                
-                let device_class = match device_props.get("Class") {
-                    Some(v) => v.downcast_ref::<u32>()
-                        .ok()
-                        .map(DeviceType::from)
-                        .unwrap_or(DeviceType::Unknown),
-                    None => DeviceType::Unknown,
-                };
-                
-                devices.push(BluetoothDevice {
-                    path: path.to_string(),
-                    name,
-                    device_type: device_class,
-                    is_connected,
-                    is_paired,
-                    battery_percentage: battery,
-                });
+
+        for (path, interfaces) in reply {
+            if interfaces.contains_key("org.bluez.Adapter1") {
+                return Ok(Some(path.to_string()));
             }
         }
-        
-        devices.sort_by(|a, b| {
-            b.is_connected.cmp(&a.is_connected)
-                .then_with(|| b.is_paired.cmp(&a.is_paired))
-                .then_with(|| a.name.cmp(&b.name))
-        });
-        
-        Ok(devices)
+        Ok(None)
     }
-    
-    pub async fn start_discovery(&self) -> zbus::Result<()> {
-        let adapter = self.adapter_path.as_ref()
+
+    pub async fn is_powered(&self) -> zbus::Result<bool> {
+        let adapter_str = self.adapter_path.as_ref()
             .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
+        let adapter = ObjectPath::try_from(adapter_str.as_str()).map_err(|e| zbus::Error::Variant(e))?;
         
-        let path: zbus::zvariant::ObjectPath = adapter.as_str().try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+        let reply = self.conn
+            .call_method(
+                Some("org.bluez"),
+                &adapter,
+                Some("org.freedesktop.DBus.Properties"),
+                "Get",
+                &("org.bluez.Adapter1", "Powered"),
+            )
+            .await?
+            .body()
+            .deserialize::<zbus::zvariant::OwnedValue>()?;
+
+        bool::try_from(reply).map_err(zbus::Error::from)
+    }
+
+    pub async fn set_powered(&self, powered: bool) -> zbus::Result<()> {
+        let adapter_str = self.adapter_path.as_ref()
+            .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
+        let adapter = ObjectPath::try_from(adapter_str.as_str()).map_err(|e| zbus::Error::Variant(e))?;
+        
+        let value = zbus::zvariant::Value::Bool(powered);
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &path,
+                &adapter,
+                Some("org.freedesktop.DBus.Properties"),
+                "Set",
+                &("org.bluez.Adapter1", "Powered", value),
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn start_discovery(&self) -> zbus::Result<()> {
+        let adapter_str = self.adapter_path.as_ref()
+            .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
+        let adapter = ObjectPath::try_from(adapter_str.as_str()).map_err(|e| zbus::Error::Variant(e))?;
+        
+        self.conn
+            .call_method(
+                Some("org.bluez"),
+                &adapter,
                 Some("org.bluez.Adapter1"),
                 "StartDiscovery",
                 &(),
@@ -250,17 +106,16 @@ impl BluetoothManager {
             .await?;
         Ok(())
     }
-    
+
     pub async fn stop_discovery(&self) -> zbus::Result<()> {
-        let adapter = self.adapter_path.as_ref()
+        let adapter_str = self.adapter_path.as_ref()
             .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
+        let adapter = ObjectPath::try_from(adapter_str.as_str()).map_err(|e| zbus::Error::Variant(e))?;
         
-        let path: zbus::zvariant::ObjectPath = adapter.as_str().try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &path,
+                &adapter,
                 Some("org.bluez.Adapter1"),
                 "StopDiscovery",
                 &(),
@@ -268,14 +123,72 @@ impl BluetoothManager {
             .await?;
         Ok(())
     }
-    
-    pub async fn connect_device(&self, path_str: &str) -> zbus::Result<()> {
-        let path: zbus::zvariant::ObjectPath = path_str.try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+
+    pub async fn get_devices(&self) -> zbus::Result<Vec<BluetoothDevice>> {
+        let reply: std::collections::HashMap<zbus::zvariant::OwnedObjectPath, std::collections::HashMap<String, std::collections::HashMap<String, zbus::zvariant::OwnedValue>>> = self.conn
+            .call_method(
+                Some("org.bluez"),
+                "/",
+                Some("org.freedesktop.DBus.ObjectManager"),
+                "GetManagedObjects",
+                &(),
+            )
+            .await?
+            .body()
+            .deserialize()?;
+
+        let mut devices = Vec::new();
+        for (path, interfaces) in reply {
+            if let Some(props) = interfaces.get("org.bluez.Device1") {
+                let name = props.get("Name")
+                    .or_else(|| props.get("Alias"))
+                    .and_then(|v| <&str>::try_from(v).ok())
+                    .unwrap_or("Unknown Device")
+                    .to_string();
+
+                let is_connected = props.get("Connected")
+                    .and_then(|v| bool::try_from(v).ok())
+                    .unwrap_or(false);
+
+                let is_paired = props.get("Paired")
+                    .and_then(|v| bool::try_from(v).ok())
+                    .unwrap_or(false);
+
+                let battery_percentage = props.get("BatteryPercentage")
+                    .and_then(|v| u8::try_from(v).ok());
+
+                let icon = props.get("Icon")
+                    .and_then(|v| <&str>::try_from(v).ok());
+
+                let device_type = match icon {
+                    Some("audio-card") | Some("audio-speakers") | Some("audio-headset") | Some("audio-headphones") => Some(DeviceType::Audio),
+                    Some("input-keyboard") => Some(DeviceType::Keyboard),
+                    Some("input-mouse") | Some("input-tablet") => Some(DeviceType::Mouse),
+                    Some("phone") => Some(DeviceType::Phone),
+                    _ => None,
+                };
+
+                devices.push(BluetoothDevice {
+                    path: path.to_string(),
+                    name,
+                    device_type,
+                    is_connected,
+                    is_paired,
+                    battery_percentage,
+                });
+            }
+        }
+
+        devices.sort_by(|a, b| b.is_connected.cmp(&a.is_connected).then_with(|| b.is_paired.cmp(&a.is_paired)).then_with(|| a.name.cmp(&b.name)));
+        Ok(devices)
+    }
+
+    pub async fn connect_device(&self, path: &str) -> zbus::Result<()> {
+        let p = ObjectPath::try_from(path).map_err(|e| zbus::Error::Variant(e))?;
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &path,
+                &p,
                 Some("org.bluez.Device1"),
                 "Connect",
                 &(),
@@ -283,14 +196,13 @@ impl BluetoothManager {
             .await?;
         Ok(())
     }
-    
-    pub async fn disconnect_device(&self, path_str: &str) -> zbus::Result<()> {
-        let path: zbus::zvariant::ObjectPath = path_str.try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+
+    pub async fn disconnect_device(&self, path: &str) -> zbus::Result<()> {
+        let p = ObjectPath::try_from(path).map_err(|e| zbus::Error::Variant(e))?;
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &path,
+                &p,
                 Some("org.bluez.Device1"),
                 "Disconnect",
                 &(),
@@ -298,14 +210,13 @@ impl BluetoothManager {
             .await?;
         Ok(())
     }
-    
-    pub async fn pair_device(&self, path_str: &str) -> zbus::Result<()> {
-        let path: zbus::zvariant::ObjectPath = path_str.try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+
+    pub async fn pair_device(&self, path: &str) -> zbus::Result<()> {
+        let p = ObjectPath::try_from(path).map_err(|e| zbus::Error::Variant(e))?;
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &path,
+                &p,
                 Some("org.bluez.Device1"),
                 "Pair",
                 &(),
@@ -313,24 +224,22 @@ impl BluetoothManager {
             .await?;
         Ok(())
     }
-    
-    pub async fn forget_device(&self, device_path_str: &str) -> zbus::Result<()> {
-        let adapter = self.adapter_path.as_ref()
+
+    pub async fn forget_device(&self, path: &str) -> zbus::Result<()> {
+        let adapter_str = self.adapter_path.as_ref()
             .ok_or_else(|| zbus::Error::Address("No Bluetooth adapter found".to_string()))?;
+        let adapter = ObjectPath::try_from(adapter_str.as_str()).map_err(|e| zbus::Error::Variant(e))?;
         
-        let adapter_path: zbus::zvariant::ObjectPath = adapter.as_str().try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
-        
-        let device_path: zbus::zvariant::ObjectPath = device_path_str.try_into()
-            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
-        
+        let path_obj = ObjectPath::try_from(path)
+            .map_err(|e| zbus::Error::Variant(e))?;
+
         self.conn
             .call_method(
                 Some("org.bluez"),
-                &adapter_path,
+                &adapter,
                 Some("org.bluez.Adapter1"),
                 "RemoveDevice",
-                &device_path,
+                &(path_obj),
             )
             .await?;
         Ok(())

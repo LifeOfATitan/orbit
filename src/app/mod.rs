@@ -101,6 +101,21 @@ impl OrbitApp {
                 let tx_init = tx.clone();
                 
                 std::thread::spawn(move || {
+                    // 1. Start Daemon Server IMMEDIATELY
+                    if is_daemon {
+                        match rt_init.block_on(async { DaemonServer::new().await }) {
+                            Ok(server) => {
+                                let _ = tx_init.send_blocking(AppEvent::DaemonStarted(server));
+                            }
+                            Err(e) => {
+                                log::error!("Failed to start daemon server: {}", e);
+                                eprintln!("Error: {}", e);
+                                std::process::exit(1);
+                            }
+                        }
+                    }
+
+                    // 2. Initialize DBus Managers
                     let mut nm_inst = None;
                     for i in 0..5 {
                         if let Ok(inst) = rt_init.block_on(async { NetworkManager::new().await }) {
@@ -173,14 +188,14 @@ impl OrbitApp {
                                 let _ = tx_init.send_blocking(AppEvent::SavedNetworksResult(saved));
                             }
                         }
-                        
-                        if let Some(ref bt) = bt_inst {
-                            if let Ok(powered) = rt_init.block_on(async { bt.is_powered().await }) {
-                                let _ = tx_init.send_blocking(AppEvent::BtPowerState(powered));
-                            }
-                            if let Ok(devices) = rt_init.block_on(async { bt.get_devices().await }) {
-                                let _ = tx_init.send_blocking(AppEvent::BtScanResult(devices));
-                            }
+                    }
+                    
+                    if let Some(ref bt) = bt_inst {
+                        if let Ok(powered) = rt_init.block_on(async { bt.is_powered().await }) {
+                            let _ = tx_init.send_blocking(AppEvent::BtPowerState(powered));
+                        }
+                        if let Ok(devices) = rt_init.block_on(async { bt.get_devices().await }) {
+                            let _ = tx_init.send_blocking(AppEvent::BtScanResult(devices));
                         }
                     }
                     
@@ -188,19 +203,6 @@ impl OrbitApp {
                     *nm_guard = nm_inst;
                     let mut bt_guard = bt_arc.lock().unwrap();
                     *bt_guard = bt_inst;
-
-                    if is_daemon {
-                        match rt_init.block_on(async { DaemonServer::new().await }) {
-                            Ok(server) => {
-                                let _ = tx_init.send_blocking(AppEvent::DaemonStarted(server));
-                            }
-                            Err(e) => {
-                                log::error!("Failed to start daemon server: {}", e);
-                                eprintln!("Error: {}", e);
-                                std::process::exit(1);
-                            }
-                        }
-                    }
                 });
             }
             
@@ -267,6 +269,7 @@ fn setup_events_receiver(
                 }
                 AppEvent::Error(msg) => {
                     win.network_list().set_connecting_ssid(None);
+                    win.network_list().set_disconnecting_ssid(None);
                     win.show_error(&msg);
                 }
                 AppEvent::Notify(msg) => {
@@ -313,11 +316,13 @@ fn setup_events_receiver(
                     std::thread::spawn(move || {
                         let nm_guard = nm_ref.lock().unwrap();
                         if let Some(ref nm_inst) = *nm_guard {
-                            match rt_ref.block_on(async { nm_inst.get_wireless_devices().await }) {
+                            let rt_inner = rt_ref.clone();
+                            match rt_inner.block_on(async { nm_inst.get_wireless_devices().await }) {
                                 Ok(devices) => {
                                     if let Some(device_path) = devices.get(0) {
                                         let pwd = if password.is_empty() { None } else { Some(password.as_str()) };
-                                        match rt_ref.block_on(async { nm_inst.connect_hidden(&ssid, pwd, device_path).await }) {
+                                        let rt_conn = rt_ref.clone();
+                                        match rt_conn.block_on(async { nm_inst.connect_hidden(&ssid, pwd, device_path).await }) {
                                             Ok(()) => {
                                                 let _ = tx_ref.send_blocking(AppEvent::ConnectSuccess);
                                                 let _ = tx_ref.send_blocking(AppEvent::Notify(format!("Connecting to hidden network {}...", ssid)));
@@ -519,36 +524,65 @@ fn setup_ui_callbacks(
         let ssid = ap.ssid.clone();
         
         if ap.is_connected {
-            let ap_path = ap.path.clone();
-            let ssid = ap.ssid.clone();
-            let _ = tx.send_blocking(AppEvent::DisconnectStarted(ssid.clone()));
+            let ap_path_inner = ap.path.clone();
+            let ssid_inner = ap.ssid.clone();
+            let _ = tx.send_blocking(AppEvent::DisconnectStarted(ssid_inner.clone()));
+            let nm_val = nm.clone();
+            let rt_val = rt.clone();
+            let tx_val = tx.clone();
             std::thread::spawn(move || {
-                let nm_guard = nm.lock().unwrap();
+                let nm_guard = nm_val.lock().unwrap();
                 if let Some(ref nm_inst) = *nm_guard {
-                    let _ = rt.block_on(async { nm_inst.disconnect_ap(&ssid, &ap_path).await });
-                    let _ = tx.send_blocking(AppEvent::ConnectSuccess);
+                    let _ = rt_val.block_on(async { nm_inst.disconnect_ap(&ssid_inner, &ap_path_inner).await });
+                    // Artificial delay for visual feedback (1s)
+                    std::thread::sleep(std::time::Duration::from_millis(1000));
+                    let _ = tx_val.send_blocking(AppEvent::ConnectSuccess);
                     std::thread::sleep(std::time::Duration::from_millis(500));
-                    if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                        let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                    if let Ok(aps) = rt_val.block_on(async { nm_inst.get_access_points().await }) {
+                        let _ = tx_val.send_blocking(AppEvent::WifiScanResult(aps));
                     }
                 }
             });
         } else {
-            let win = win_connect.clone();
-            if ap.security == SecurityType::None {
+            let win_p = win_connect.clone();
+            let nm_check = nm.clone();
+            let rt_check = rt.clone();
+            let ssid_check = ssid.clone();
+            
+            let has_saved = {
+                let nm_guard = nm_check.lock().unwrap();
+                if let Some(ref nm_inst) = *nm_guard {
+                    rt_check.block_on(async { nm_inst.has_saved_connection(&ssid_check).await })
+                } else {
+                    false
+                }
+            };
+
+            if ap.security == SecurityType::None || has_saved {
                 let _ = tx.send_blocking(AppEvent::ConnectStarted(ssid.clone()));
+                let nm_val = nm.clone();
+                let rt_val = rt.clone();
+                let tx_val = tx.clone();
+                let ssid_val = ssid.clone();
+                let ap_path_val = ap_path.clone();
                 std::thread::spawn(move || {
-                    let nm_guard = nm.lock().unwrap();
+                    log::info!("UI: Connect clicked for network: '{}' (Has saved: {})", ssid_val, has_saved);
+                    let nm_guard = nm_val.lock().unwrap();
                     if let Some(ref nm_inst) = *nm_guard {
-                        match rt.block_on(async { nm_inst.connect_to_network(&ssid, None, &ap_path).await }) {
+                        match rt_val.block_on(async { nm_inst.connect_to_network(&ssid_val, None, &ap_path_val).await }) {
                             Ok(()) => {
-                                let _ = tx.send_blocking(AppEvent::ConnectSuccess);
-                                let _ = tx.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid)));
-                                if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                                    let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                                // Artificial delay for visual feedback (1s)
+                                std::thread::sleep(std::time::Duration::from_millis(1000));
+                                let _ = tx_val.send_blocking(AppEvent::ConnectSuccess);
+                                let _ = tx_val.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid_val)));
+                                if let Ok(aps) = rt_val.block_on(async { nm_inst.get_access_points().await }) {
+                                    let _ = tx_val.send_blocking(AppEvent::WifiScanResult(aps));
                                 }
                             }
-                            Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
+                            Err(e) => { 
+                                log::error!("UI: Connect failed for '{}': {}", ssid_val, e);
+                                let _ = tx_val.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); 
+                            }
                         }
                     }
                 });
@@ -558,26 +592,33 @@ fn setup_ui_callbacks(
                 let rt_val = rt.clone();
                 let tx_val = tx.clone();
                 let ap_path_val = ap_path.clone();
-                win.show_password_dialog(&ssid, move |password| {
+                win_p.show_password_dialog(&ssid, move |password| {
                     if let Some(pwd) = password {
-                        let _ = tx_val.send_blocking(AppEvent::ConnectStarted(ssid_val.clone()));
-                        let nm = nm_val.clone();
-                        let rt = rt_val.clone();
-                        let tx = tx_val.clone();
-                        let ssid = ssid_val.clone();
-                        let ap_path = ap_path_val.clone();
+                        let nm_inner = nm_val.clone();
+                        let rt_inner = rt_val.clone();
+                        let tx_inner = tx_val.clone();
+                        let ssid_inner = ssid_val.clone();
+                        let ap_path_inner = ap_path_val.clone();
+
+                        let _ = tx_inner.send_blocking(AppEvent::ConnectStarted(ssid_inner.clone()));
                         std::thread::spawn(move || {
-                            let nm_guard = nm.lock().unwrap();
+                            log::info!("UI: Connect clicked (with password) for: '{}'", ssid_inner);
+                            let nm_guard = nm_inner.lock().unwrap();
                             if let Some(ref nm_inst) = *nm_guard {
-                                match rt.block_on(async { nm_inst.connect_to_network(&ssid, Some(&pwd), &ap_path).await }) {
+                                match rt_inner.block_on(async { nm_inst.connect_to_network(&ssid_inner, Some(&pwd), &ap_path_inner).await }) {
                                     Ok(()) => {
-                                        let _ = tx.send_blocking(AppEvent::ConnectSuccess);
-                                        let _ = tx.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid)));
-                                        if let Ok(aps) = rt.block_on(async { nm_inst.get_access_points().await }) {
-                                            let _ = tx.send_blocking(AppEvent::WifiScanResult(aps));
+                                        // Artificial delay for visual feedback (1s)
+                                        std::thread::sleep(std::time::Duration::from_millis(1000));
+                                        let _ = tx_inner.send_blocking(AppEvent::ConnectSuccess);
+                                        let _ = tx_inner.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid_inner)));
+                                        if let Ok(aps) = rt_inner.block_on(async { nm_inst.get_access_points().await }) {
+                                            let _ = tx_inner.send_blocking(AppEvent::WifiScanResult(aps));
                                         }
                                     }
-                                    Err(e) => { let _ = tx.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); }
+                                    Err(e) => { 
+                                        log::error!("UI: Connect failed for '{}': {}", ssid_inner, e);
+                                        let _ = tx_inner.send_blocking(AppEvent::Error(format!("Connect failed: {}", e))); 
+                                    }
                                 }
                             }
                         });
@@ -678,8 +719,8 @@ fn setup_ui_callbacks(
         let bt = bt_pwr.clone();
         let rt = rt_pwr.clone();
         let tx = tx_pwr.clone();
-        let win = win_pwr.clone();
-        let current_tab = win.stack().visible_child_name().map(|s| s.to_string());
+        let win_inner = win_pwr.clone();
+        let current_tab = win_inner.stack().visible_child_name().map(|s| s.to_string());
         
         std::thread::spawn(move || {
             if let Some(tab) = current_tab {

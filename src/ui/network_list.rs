@@ -2,6 +2,7 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::HashMap;
 use crate::dbus::network_manager::{AccessPoint, SecurityType};
 
 #[derive(Clone)]
@@ -10,6 +11,7 @@ pub struct NetworkList {
     list_box: gtk::Box,
     scan_button: gtk::Button,
     networks: Rc<RefCell<Vec<AccessPoint>>>,
+    row_actions: Rc<RefCell<HashMap<String, gtk::Box>>>,
     on_connect: Rc<RefCell<Option<Rc<dyn Fn(AccessPoint)>>>>,
     on_connect_hidden: Rc<RefCell<Option<Rc<dyn Fn()>>>>,
     on_details: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
@@ -42,10 +44,9 @@ impl NetworkList {
         container.append(&scrolled);
         
         let footer = gtk::Box::builder()
-            .orientation(Orientation::Horizontal)
-            .spacing(8)
             .css_classes(["orbit-footer"])
             .margin_top(8)
+            .spacing(8)
             .build();
         
         let scan_button = gtk::Button::builder()
@@ -68,6 +69,7 @@ impl NetworkList {
             list_box,
             scan_button,
             networks: Rc::new(RefCell::new(Vec::new())),
+            row_actions: Rc::new(RefCell::new(HashMap::new())),
             on_connect: Rc::new(RefCell::new(None)),
             on_connect_hidden: Rc::new(RefCell::new(None)),
             on_details: Rc::new(RefCell::new(None)),
@@ -149,21 +151,42 @@ impl NetworkList {
     }
     
     pub fn set_connecting_ssid(&self, ssid: Option<String>) {
-        *self.connecting_ssid.borrow_mut() = ssid;
-        let networks = self.networks.borrow().clone();
-        if !networks.is_empty() {
-            self.render_networks(&networks);
+        let old_ssid = self.connecting_ssid.borrow().clone();
+        *self.connecting_ssid.borrow_mut() = ssid.clone();
+        
+        if let Some(ref s) = ssid {
+            self.update_single_row_actions(s);
+        }
+        if let Some(ref s) = old_ssid {
+            self.update_single_row_actions(s);
         }
     }
     
     pub fn set_disconnecting_ssid(&self, ssid: Option<String>) {
-        *self.disconnecting_ssid.borrow_mut() = ssid;
-        let networks = self.networks.borrow().clone();
-        if !networks.is_empty() {
-            self.render_networks(&networks);
+        let old_ssid = self.disconnecting_ssid.borrow().clone();
+        *self.disconnecting_ssid.borrow_mut() = ssid.clone();
+        
+        if let Some(ref s) = ssid {
+            self.update_single_row_actions(s);
+        }
+        if let Some(ref s) = old_ssid {
+            self.update_single_row_actions(s);
         }
     }
     
+    fn update_single_row_actions(&self, ssid: &str) {
+        let networks = self.networks.borrow();
+        if let Some(network) = networks.iter().find(|n| n.ssid == ssid) {
+            let actions_map = self.row_actions.borrow();
+            if let Some(actions_box) = actions_map.get(ssid) {
+                while let Some(child) = actions_box.first_child() {
+                    actions_box.remove(&child);
+                }
+                self.build_actions_box_content(actions_box, network);
+            }
+        }
+    }
+
     pub fn set_networks(&self, networks: Vec<AccessPoint>) {
         *self.networks.borrow_mut() = networks.clone();
         *self.connecting_ssid.borrow_mut() = None;
@@ -172,6 +195,8 @@ impl NetworkList {
     }
     
     fn render_networks(&self, networks: &[AccessPoint]) {
+        self.row_actions.borrow_mut().clear();
+
         while let Some(child) = self.list_box.first_child() {
             self.list_box.remove(&child);
         }
@@ -214,16 +239,10 @@ impl NetworkList {
     }
     
     fn create_network_row(&self, network: &AccessPoint) -> gtk::Box {
-        let css_classes = if network.is_connected {
-            vec!["orbit-network-row", "connected"]
-        } else {
-            vec!["orbit-network-row"]
-        };
-        
         let row = gtk::Box::builder()
             .orientation(Orientation::Horizontal)
             .spacing(12)
-            .css_classes(css_classes)
+            .css_classes(["orbit-network-row"])
             .focusable(true)
             .build();
         
@@ -239,7 +258,7 @@ impl NetworkList {
         });
         row.add_controller(focus_in);
         row.add_controller(focus_out);
-        
+
         if network.is_connected {
             let icon_container = gtk::Box::builder()
                 .css_classes(["orbit-icon-container"])
@@ -292,6 +311,15 @@ impl NetworkList {
             .spacing(8)
             .build();
         
+        self.build_actions_box_content(&actions_box, network);
+        
+        self.row_actions.borrow_mut().insert(network.ssid.clone(), actions_box.clone());
+
+        row.append(&actions_box);
+        row
+    }
+
+    fn build_actions_box_content(&self, actions_box: &gtk::Box, network: &AccessPoint) {
         if network.security != SecurityType::None && !network.is_connected {
             let lock_icon = gtk::Image::builder()
                 .icon_name("system-lock-screen-symbolic")
@@ -306,42 +334,57 @@ impl NetworkList {
         let any_connecting = self.connecting_ssid.borrow().is_some();
         let any_disconnecting = self.disconnecting_ssid.borrow().is_some();
         
-        let action_label = if is_disconnecting {
-            "Disconnecting..."
-        } else if network.is_connected {
-            "Disconnect"
-        } else if is_connecting {
-            "Connecting..."
-        } else {
-            "Connect"
-        };
-        
-        let mut btn_classes = if network.is_connected { 
-            vec!["orbit-button", "flat"] 
-        } else { 
-            vec!["orbit-button", "primary", "flat"] 
-        };
         if is_connecting || is_disconnecting {
-            btn_classes.push("connecting");
+            let working_box = gtk::Box::builder()
+                .orientation(Orientation::Horizontal)
+                .spacing(8)
+                .css_classes(["orbit-working-indicator"])
+                .build();
+            
+            let spinner = gtk::Spinner::builder()
+                .spinning(true)
+                .build();
+            spinner.start();
+            
+            let label = gtk::Label::builder()
+                .label(if is_connecting { "Connecting..." } else { "Disconnecting..." })
+                .css_classes(["orbit-status"])
+                .build();
+            
+            working_box.append(&spinner);
+            working_box.append(&label);
+            actions_box.append(&working_box);
+        } else {
+            let action_label = if network.is_connected {
+                "Disconnect"
+            } else {
+                "Connect"
+            };
+            
+            let btn_classes = if network.is_connected { 
+                vec!["orbit-button", "flat"] 
+            } else { 
+                vec!["orbit-button", "primary", "flat"] 
+            };
+            
+            let action_btn = gtk::Button::builder()
+                .label(action_label)
+                .css_classes(btn_classes)
+                .sensitive(!(any_connecting && !network.is_connected) && !(any_disconnecting && network.is_connected))
+                .build();
+            
+            let network_clone = network.clone();
+            let on_connect = self.on_connect.clone();
+            action_btn.connect_clicked(move |_| {
+                if let Some(callback) = on_connect.borrow().as_ref() {
+                    callback(network_clone.clone());
+                }
+            });
+            
+            actions_box.append(&action_btn);
         }
         
-        let action_btn = gtk::Button::builder()
-            .label(action_label)
-            .css_classes(btn_classes)
-            .sensitive(!is_connecting && !is_disconnecting && !(any_connecting && !network.is_connected) && !(any_disconnecting && network.is_connected))
-            .build();
-        
-        let network_clone = network.clone();
-        let on_connect = self.on_connect.clone();
-        action_btn.connect_clicked(move |_| {
-            if let Some(callback) = on_connect.borrow().as_ref() {
-                callback(network_clone.clone());
-            }
-        });
-        
-        actions_box.append(&action_btn);
-        
-        if network.is_connected {
+        if network.is_connected && !is_disconnecting {
             let details_btn = gtk::Button::builder()
                 .label("Details")
                 .css_classes(["orbit-button", "flat"])
@@ -357,9 +400,6 @@ impl NetworkList {
             
             actions_box.append(&details_btn);
         }
-        
-        row.append(&actions_box);
-        row
     }
     
     pub fn widget(&self) -> &gtk::Box {
