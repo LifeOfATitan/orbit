@@ -119,27 +119,49 @@ impl OrbitApp {
                             if enabled {
                                 let active = rt.block_on(async { nm.get_active_ssid().await });
                                 let connected_ssid = if let Some(ref ssid) = active {
-                                    // Already connected (autoconnect worked), notify
-                                    let _ = tx.send_blocking(AppEvent::Notify(
-                                        format!("Connected to {}", ssid)
-                                    ));
-                                    Some(ssid.clone())
-                                } else {
-                                    // Not connected yet — wait for NM autoconnect to kick in
-                                    std::thread::sleep(std::time::Duration::from_secs(4));
-                                    let active_after = rt.block_on(async { nm.get_active_ssid().await });
-                                    if let Some(ref ssid) = active_after {
-                                        let _ = tx.send_blocking(AppEvent::Notify(
-                                            format!("Connected to {}", ssid)
-                                        ));
-                                        Some(ssid.clone())
-                                    } else {
-                                        // Still not connected, trigger a scan
-                                        let _ = rt.block_on(async { nm.scan().await });
-                                        None
+                                // Already connected (autoconnect worked), notify
+                                let _ = tx.send_blocking(AppEvent::Notify(
+                                    format!("Connected to {}", ssid)
+                                ));
+                                Some(ssid.clone())
+                            } else {
+                                // Smart wait for NetworkManager autoconnect
+                                log::info!("Not connected yet, waiting for NetworkManager...");
+                                let mut attempts = 0;
+                                let mut connected_ssid = None;
+                                
+                                while attempts < 15 {
+                                    if let Some(ssid) = rt.block_on(async { nm.get_active_ssid().await }) {
+                                        log::info!("Connected to {} after {}s", ssid, attempts);
+                                        let _ = tx.send_blocking(AppEvent::Notify(format!("Connected to {}", ssid)));
+                                        connected_ssid = Some(ssid);
+                                        break;
                                     }
-                                };
-                                // Check for captive portal on autoconnected network
+                                    
+                                    let state = rt.block_on(async { nm.get_wifi_device_state().await }).unwrap_or(0);
+                                    // NM_DEVICE_STATE_PREPARE (40) through NM_DEVICE_STATE_SECONDARIES (90)
+                                    // If we are in these states, NM is actively trying to connect.
+                                    if state < 30 || state > 100 {
+                                        // If we've waited a bit and NM isn't even trying, stop waiting
+                                        if attempts >= 5 {
+                                            log::info!("NetworkManager is idle (state {}), stopping wait", state);
+                                            break;
+                                        }
+                                    } else {
+                                        log::info!("NetworkManager is busy (state {}), waiting...", state);
+                                    }
+
+                                    std::thread::sleep(std::time::Duration::from_secs(1));
+                                    attempts += 1;
+                                }
+
+                                if connected_ssid.is_none() {
+                                    log::info!("Autoconnect timed out, triggering scan");
+                                    let _ = rt.block_on(async { nm.scan().await });
+                                }
+                                connected_ssid
+                            };
+                            // Check for captive portal on autoconnected network
                                 if let Some(ssid) = connected_ssid {
                                     std::thread::sleep(std::time::Duration::from_secs(2));
                                     if let Ok(connectivity) = rt.block_on(async { nm.check_connectivity().await }) {

@@ -115,6 +115,32 @@ impl NetworkManager {
         Ok(())
     }
     
+    pub async fn get_wifi_device_state(&self) -> zbus::Result<u32> {
+        let devices = self.get_wireless_devices().await?;
+        if let Some(device_path) = devices.get(0) {
+            let path: zbus::zvariant::ObjectPath = device_path.as_str().try_into()
+                .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+            let reply = self.conn
+                .call_method(
+                    Some("org.freedesktop.NetworkManager"),
+                    &path,
+                    Some("org.freedesktop.DBus.Properties"),
+                    "Get",
+                    &("org.freedesktop.NetworkManager.Device", "State"),
+                )
+                .await?
+                .body()
+                .deserialize::<zbus::zvariant::OwnedValue>()?;
+            
+            let state: u32 = match u32::try_from(zbus::zvariant::Value::from(reply)) {
+                Ok(t) => t,
+                Err(_) => 0,
+            };
+            return Ok(state);
+        }
+        Ok(0)
+    }
+
     pub async fn get_wireless_devices(&self) -> zbus::Result<Vec<String>> {
         let devices: Vec<zbus::zvariant::OwnedObjectPath> = self.conn
             .call_method(
