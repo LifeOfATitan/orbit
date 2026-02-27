@@ -153,10 +153,6 @@ impl Header {
         &self.vpn_tab
     }
 
-    pub fn power_switch(&self) -> &gtk::Switch {
-        &self.power_switch
-    }
-
     pub fn set_tab(&self, tab: &str) {
         self.wifi_tab.remove_css_class("active");
         self.saved_tab.remove_css_class("active");

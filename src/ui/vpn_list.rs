@@ -2,20 +2,18 @@ use gtk4::prelude::*;
 use gtk4::{self as gtk, glib, Orientation};
 use std::cell::RefCell;
 use std::rc::Rc;
-use crate::theme::Theme;
 use crate::dbus::network_manager::VpnConnection;
 
 #[derive(Clone)]
 pub struct VpnList {
     container: gtk::Box,
     list_box: gtk::Box,
-    refresh_button: gtk::Button,
-    theme: Rc<RefCell<Theme>>,
     networks: Rc<RefCell<Vec<VpnConnection>>>,
+    on_connect: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
 }
 
 impl VpnList {
-    pub fn new(theme: Rc<RefCell<Theme>>) -> Self {
+    pub fn new() -> Self {
         let container = gtk::Box::builder()
             .orientation(Orientation::Vertical)
             .vexpand(true)
@@ -43,21 +41,13 @@ impl VpnList {
             .margin_top(8)
             .build();
         
-        let refresh_button = gtk::Button::builder()
-            .label(" Refresh VPNs")
-            .css_classes(["orbit-button", "primary", "flat"])
-            .hexpand(true)
-            .build();
-        
-        footer.append(&refresh_button);
         container.append(&footer);
         
         let list = Self {
             container,
             list_box,
-            refresh_button,
-            theme,
             networks: Rc::new(RefCell::new(Vec::new())),
+            on_connect: Rc::new(RefCell::new(None)),
         };
         
         list.show_placeholder();
@@ -157,11 +147,11 @@ impl VpnList {
             .spacing(6)
             .build();
         
-        let connect_button = gtk::Button::builder()
-            .label("Connect")
-            .css_classes(["orbit-button", "primary", "flat"])
+        let connect_switch = gtk::Switch::builder()
+            .active(network.is_active)
+            .css_classes(["orbit-toggle-switch"])
             .build();
-        button_box.append(&connect_button);
+        button_box.append(&connect_switch);
         
         let info_box = gtk::Box::builder()
             .orientation(Orientation::Vertical)
@@ -179,8 +169,6 @@ impl VpnList {
         
         let status_text = if network.is_active {
             "Connected"
-        } else if network.autoconnect {
-            "Auto-connect enabled"
         } else {
             "Disconnected"
         };
@@ -196,8 +184,6 @@ impl VpnList {
         row.append(&button_box);
         
         
-        
-        let path = network.path.clone();
         let is_user_action = Rc::new(RefCell::new(false));
         let is_user_action_clone = is_user_action.clone();
         
@@ -205,18 +191,22 @@ impl VpnList {
             *is_user_action_clone.borrow_mut() = true;
             glib::ControlFlow::Break
         });
-        
-        
-        let path = network.path.clone();
+        let path_connect = network.path.clone();
+        let on_toggle = self.on_connect.clone();
+        connect_switch.connect_state_notify(move |switch| {
+            if *is_user_action.borrow() {
+                if let Some(callback) = on_toggle.borrow().as_ref() {
+                    println!("Toggling connection for path: {}", path_connect);
+                }
+            }
+        });
         row
+    
     }
     
     pub fn widget(&self) -> &gtk::Box {
         &self.container
     }
-    
-    pub fn refresh_button(&self) -> &gtk::Button {
-        &self.refresh_button
-    }
+
     
 }

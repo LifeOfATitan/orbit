@@ -18,6 +18,14 @@ pub struct SavedNetwork {
     pub autoconnect: bool,
     pub is_active: bool,
 }
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct VpnConnection {
+    pub name: String,
+    uuid: String,
+    pub path: String,
+    pub connection_type: String,
+    pub is_active: bool,
+}
 
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct NetworkDetails {
@@ -846,5 +854,57 @@ impl NetworkManager {
             }
         }
         Ok(details)
+    }
+    pub async fn get_saved_vpns(&self) -> zbus::Result<Vec<VpnConnection>> {
+        let connections_reply = self.conn
+            .call_method(
+                Some("org.freedesktop.NetworkManager"),
+                "/org/freedesktop/NetworkManager/Settings",
+                Some("org.freedesktop.NetworkManager.Settings"),
+                "ListConnections",
+                &(),
+            )
+            .await?;
+
+        let connections: Vec<zbus::zvariant::OwnedObjectPath> = connections_reply.body().deserialize()?;
+        let mut vpn_list = Vec::new();
+        let active_paths = self.get_active_connection_paths().await;
+
+        for conn_path in connections {
+            println!("Checking connection: {}", conn_path);
+            if let Ok(settings) = self.get_connection_settings_raw(&conn_path).await {
+                if let Some(connection_map) = settings.get("connection") {
+                    let conn_type = connection_map.get("type")
+                        .and_then(|v| v.downcast_ref::<String>().ok())
+                        .unwrap_or_default();
+                    println!("Connection type: {}", conn_type);
+
+                    // Szűrünk a vpn és wireguard típusokra
+                    if conn_type == "vpn" || conn_type == "wireguard" {
+                        println!("Found VPN connection: {}", conn_path);
+                        let id = connection_map.get("id")
+                            .and_then(|v| v.downcast_ref::<String>().ok())
+                            .unwrap_or_default();
+                        
+                        let uuid = connection_map.get("uuid")
+                            .and_then(|v| v.downcast_ref::<String>().ok())
+                            .unwrap_or_default();
+
+
+                        let is_active = active_paths.contains(&conn_path.to_string());
+                        println!("Is active: {}", is_active);
+
+                        vpn_list.push(VpnConnection {
+                            name: id,
+                            uuid,
+                            path: conn_path.to_string(),
+                            connection_type: conn_type,
+                            is_active,
+                        });
+                    }
+                }
+            }
+        }
+        Ok(vpn_list)
     }
 }
