@@ -871,15 +871,13 @@ impl NetworkManager {
         let active_paths = self.get_active_connection_paths().await;
 
         for conn_path in connections {
-            println!("Checking connection: {}", conn_path);
             if let Ok(settings) = self.get_connection_settings_raw(&conn_path).await {
                 if let Some(connection_map) = settings.get("connection") {
                     let conn_type = connection_map.get("type")
                         .and_then(|v| v.downcast_ref::<String>().ok())
                         .unwrap_or_default();
-                    println!("Connection type: {}", conn_type);
 
-                    // Szűrünk a vpn és wireguard típusokra
+                    // openvpn = "vpn", wireguard = "wireguard"
                     if conn_type == "vpn" || conn_type == "wireguard" {
                         println!("Found VPN connection: {}", conn_path);
                         let id = connection_map.get("id")
@@ -890,15 +888,39 @@ impl NetworkManager {
                             .and_then(|v| v.downcast_ref::<String>().ok())
                             .unwrap_or_default();
 
+                        let mut is_active = false;
+                    
+                        for path_str in &active_paths {
+                            let path_op = match zbus::zvariant::ObjectPath::try_from(path_str.as_str()) {
+                                Ok(p) => p,
+                                Err(_) => continue,
+                            };
+                            let id_val_reply: Result<zbus::zvariant::OwnedValue, _> = self.conn
+                                .call_method(
+                                    Some("org.freedesktop.NetworkManager"),
+                                    path_op,
+                                    Some("org.freedesktop.DBus.Properties"),
+                                    "Get",
+                                    &("org.freedesktop.NetworkManager.Connection.Active", "Id"),
+                                )
+                                .await
+                                .and_then(|r| r.body().deserialize());
 
-                        let is_active = active_paths.contains(&conn_path.to_string());
-                        println!("Is active: {}", is_active);
+                            if let Ok(val) = id_val_reply {
+                                let active_id = String::try_from(val).unwrap_or_default();
+                            
+                                if active_id == id {
+                                    is_active = true;
+                                    break;
+                                }
+                            }
+                        }
 
                         vpn_list.push(VpnConnection {
                             name: id,
                             uuid,
                             path: conn_path.to_string(),
-                            connection_type: conn_type,
+                            connection_type: conn_type.to_string(),
                             is_active,
                         });
                     }
@@ -906,5 +928,66 @@ impl NetworkManager {
             }
         }
         Ok(vpn_list)
+    }
+    
+    pub async fn activate_vpn(&self, connection_path: &str) -> zbus::Result<()> {
+        let path = zbus::zvariant::ObjectPath::try_from(connection_path)
+            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+        let device_path = zbus::zvariant::ObjectPath::try_from("/")
+            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+        let specific_object = zbus::zvariant::ObjectPath::try_from("/")
+            .map_err(|e: zbus::zvariant::Error| zbus::Error::Variant(e))?;
+
+        self.conn.call_method(
+            Some("org.freedesktop.NetworkManager"),
+            "/org/freedesktop/NetworkManager",
+            Some("org.freedesktop.NetworkManager"),
+            "ActivateConnection",
+            &(&path, &device_path, &specific_object),
+        )
+        .await?;
+
+        Ok(())
+    }
+    
+    pub async fn deactivate_vpn(&self, settings_path: &str) -> zbus::Result<()> {
+        let active_paths = self.get_active_connection_paths().await;
+        let mut target_active_obj_path: Option<zbus::zvariant::OwnedObjectPath> = None;
+
+        for path_str in active_paths {
+            let active_obj_path = match zbus::zvariant::ObjectPath::try_from(path_str.as_str()) {
+                Ok(p) => p,
+                Err(_) => continue,
+            };
+
+            let conn_val: zbus::zvariant::OwnedValue = self.conn
+                .call_method(
+                    Some("org.freedesktop.NetworkManager"),
+                    &active_obj_path,
+                    Some("org.freedesktop.DBus.Properties"),
+                    "Get",
+                    &("org.freedesktop.NetworkManager.Connection.Active", "Connection"),
+                )
+                .await?
+                .body()
+                .deserialize()?;
+
+            let found_settings_path: zbus::zvariant::OwnedObjectPath = conn_val.try_into()?;
+            if found_settings_path.as_str() == settings_path {
+                target_active_obj_path = Some(zbus::zvariant::OwnedObjectPath::from(active_obj_path));
+                break;
+            }
+        }
+
+        if let Some(active_to_stop) = target_active_obj_path {
+            self.conn.call_method(
+                Some("org.freedesktop.NetworkManager"),
+                "/org/freedesktop/NetworkManager",
+                Some("org.freedesktop.NetworkManager"),
+                "DeactivateConnection",
+                &(active_to_stop,),
+            ).await?;
+        }
+        Ok(())
     }
 }

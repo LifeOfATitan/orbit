@@ -9,7 +9,7 @@ pub struct VpnList {
     container: gtk::Box,
     list_box: gtk::Box,
     networks: Rc<RefCell<Vec<VpnConnection>>>,
-    on_connect: Rc<RefCell<Option<Rc<dyn Fn(String)>>>>,
+    on_vpn_toggle: Rc<RefCell<Option<Rc<dyn Fn(String, bool)>>>>,
 }
 
 impl VpnList {
@@ -36,18 +36,11 @@ impl VpnList {
         scrolled.set_child(Some(&list_box));
         container.append(&scrolled);
         
-        let footer = gtk::Box::builder()
-            .css_classes(["orbit-footer"])
-            .margin_top(8)
-            .build();
-        
-        container.append(&footer);
-        
         let list = Self {
             container,
             list_box,
             networks: Rc::new(RefCell::new(Vec::new())),
-            on_connect: Rc::new(RefCell::new(None)),
+            on_vpn_toggle: Rc::new(RefCell::new(None)),
         };
         
         list.show_placeholder();
@@ -79,7 +72,7 @@ impl VpnList {
         
         if !active_networks.is_empty() {
             let section_header = gtk::Label::builder()
-                .label("CURRENTLY CONNECTED")
+                .label("CURRENTLY ACTIVE")
                 .css_classes(["orbit-section-header"])
                 .halign(gtk::Align::Start)
                 .build();
@@ -191,12 +184,12 @@ impl VpnList {
             *is_user_action_clone.borrow_mut() = true;
             glib::ControlFlow::Break
         });
-        let path_connect = network.path.clone();
-        let on_toggle = self.on_connect.clone();
+        let path_toggle = network.path.clone();
+        let on_vpn_toggle = self.on_vpn_toggle.clone();
         connect_switch.connect_state_notify(move |switch| {
             if *is_user_action.borrow() {
-                if let Some(callback) = on_toggle.borrow().as_ref() {
-                    println!("Toggling connection for path: {}", path_connect);
+                if let Some(callback) = on_vpn_toggle.borrow().as_ref() {
+                    callback(path_toggle.clone(), switch.is_active());
                 }
             }
         });
@@ -207,6 +200,11 @@ impl VpnList {
     pub fn widget(&self) -> &gtk::Box {
         &self.container
     }
-
+    pub fn set_on_vpn_toggle<F>(&self, callback: F) 
+    where
+        F: Fn(String, bool) + 'static,
+    {
+        *self.on_vpn_toggle.borrow_mut() = Some(Rc::new(callback));
+    }
     
 }

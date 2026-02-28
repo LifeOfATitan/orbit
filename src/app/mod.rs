@@ -603,6 +603,49 @@ fn setup_ui_callbacks(
         });
     });
 
+    let nm_vpn = nm.clone();
+    let rt_vpn = rt.clone();
+    let tx_vpn = tx.clone();
+
+    win.vpn_list().set_on_vpn_toggle(move |path: String, should_connect: bool| {
+        let nm = nm_vpn.clone();
+        let rt = rt_vpn.clone();
+        let tx = tx_vpn.clone();
+
+        std::thread::spawn(move || {
+            let nm_guard = nm.lock().unwrap();
+            if let Some(ref nm_inst) = *nm_guard {
+                let action_result = rt.block_on(async {
+                    if should_connect {
+                        nm_inst.activate_vpn(&path).await
+                    } else {
+                        nm_inst.deactivate_vpn(&path).await
+                    }
+                });
+
+                match action_result {
+                    Ok(()) => {
+                        match rt.block_on(async { nm_inst.get_saved_vpns().await }) {
+                            Ok(vpn_list) => {
+                                let _ = tx.send_blocking(AppEvent::VpnConnectionsResult(vpn_list));
+                            }
+                            Err(e) => {
+                                let _ = tx.send_blocking(AppEvent::Error(format!("Failed to refresh: {}", e)));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        let _ = tx.send_blocking(AppEvent::Error(format!("VPN toggle error: {}", e)));
+                        
+                        if let Ok(vpn_list) = rt.block_on(async { nm_inst.get_saved_vpns().await }) {
+                            let _ = tx.send_blocking(AppEvent::VpnConnectionsResult(vpn_list));
+                        }
+                    }
+                }
+            }
+        });
+    });
+
     let nm_forget = nm.clone();
     let rt_forget = rt.clone();
     let tx_forget = tx.clone();
@@ -921,6 +964,13 @@ fn setup_periodic_refresh(
                 if let Some(ref nm_inst) = *nm_guard {
                     if let Ok(saved) = rt.block_on(async { nm_inst.get_saved_networks().await }) {
                         let _ = tx.send_blocking(AppEvent::SavedNetworksResult(saved));
+                    }
+                }
+            } else if tab == "vpn" {
+                let nm_guard = nm.lock().unwrap();
+                if let Some(ref nm_inst) = *nm_guard {
+                    if let Ok(vpn) = rt.block_on(async { nm_inst.get_saved_vpns().await }) {
+                        let _ = tx.send_blocking(AppEvent::VpnConnectionsResult(vpn));
                     }
                 }
             }
