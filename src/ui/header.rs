@@ -12,6 +12,8 @@ pub struct Header {
     power_switch: gtk::Switch,
     power_box: gtk::Box,
     power_label: gtk::Label,
+    vpn_tab: gtk::Button,
+
     is_programmatic_update: Rc<RefCell<bool>>,
 }
 
@@ -87,10 +89,18 @@ impl Header {
             .css_classes(["orbit-tab", "flat"])
             .hexpand(true)
             .build();
+
+        let vpn_tab = gtk::Button::builder()
+            .label("VPN")
+            .css_classes(["orbit-tab", "flat"])
+            .hexpand(true)
+            .build();
         
         tab_bar.append(&wifi_tab);
         tab_bar.append(&saved_tab);
         tab_bar.append(&bluetooth_tab);
+        tab_bar.append(&saved_tab);
+        tab_bar.append(&vpn_tab);
         
         container.append(&title_row);
         container.append(&tab_bar);
@@ -100,6 +110,7 @@ impl Header {
             wifi_tab,
             saved_tab,
             bluetooth_tab,
+            vpn_tab,
             power_switch,
             power_box,
             power_label,
@@ -138,10 +149,15 @@ impl Header {
         &self.bluetooth_tab
     }
 
+    pub fn vpn_tab(&self) -> &gtk::Button {
+        &self.vpn_tab
+    }
+
     pub fn set_tab(&self, tab: &str) {
         self.wifi_tab.remove_css_class("active");
         self.saved_tab.remove_css_class("active");
         self.bluetooth_tab.remove_css_class("active");
+        self.vpn_tab.remove_css_class("active");
 
         match tab {
             "wifi" => {
@@ -157,6 +173,10 @@ impl Header {
                 self.bluetooth_tab.add_css_class("active");
                 self.power_box.set_visible(true);
                 self.power_label.set_label("Bluetooth");
+            }
+            "vpn" => {
+                self.vpn_tab.add_css_class("active");
+                self.power_box.set_visible(false);
             }
             _ => {}
         }

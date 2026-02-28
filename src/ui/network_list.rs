@@ -47,6 +47,7 @@ impl NetworkList {
             .css_classes(["orbit-footer"])
             .margin_top(8)
             .spacing(8)
+            .homogeneous(true)
             .build();
         
         let scan_button = gtk::Button::builder()
@@ -58,6 +59,7 @@ impl NetworkList {
         let hidden_button = gtk::Button::builder()
             .label(" Hidden Network")
             .css_classes(["orbit-button", "flat"])
+            .hexpand(true)
             .build();
         
         footer.append(&scan_button);
