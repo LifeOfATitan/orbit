@@ -1,13 +1,13 @@
 use clap::{Parser, Subcommand};
 
-mod config;
-mod theme;
-mod dbus;
-mod ui;
 mod app;
+mod config;
+mod dbus;
+mod theme;
+mod ui;
 
-use config::Config;
 use app::daemon::{DaemonClient, DaemonCommand};
+use config::Config;
 
 #[derive(Parser)]
 #[command(name = "orbit")]
@@ -32,6 +32,10 @@ enum Commands {
         #[arg(long, short)]
         tab: Option<String>,
     },
+    /// Show the window
+    Show,
+    /// Hide the window
+    Hide,
     /// Reload theme from configuration
     ReloadTheme,
     /// Reload config (position, margins) from config.toml
@@ -43,13 +47,15 @@ enum Commands {
 fn main() {
     env_logger::init();
     let cli = Cli::parse();
-    
+
     let config = Config::load();
-    
+
     match cli.command {
         Some(Commands::List) => list_networks(),
         Some(Commands::Daemon) => run_daemon(config),
         Some(Commands::Toggle { position, tab }) => toggle_daemon(position, tab),
+        Some(Commands::Show) => show(),
+        Some(Commands::Hide) => hide(),
         Some(Commands::ReloadTheme) => reload_theme(),
         Some(Commands::ReloadConfig) => reload_config(),
         Some(Commands::WaybarStatus) => waybar_status(),
@@ -67,9 +73,47 @@ fn run_daemon(config: Config) {
         eprintln!("Daemon is already running");
         std::process::exit(1);
     }
-    
+
     let app = app::OrbitApp::new_daemon(config).expect("Failed to create daemon");
     app.run();
+}
+
+fn show() {
+    if !DaemonClient::is_daemon_running() {
+        // If daemon is not running, just print a message.
+        // The theme will be loaded normally next time it starts.
+        println!("Daemon not running, nothing to reload.");
+        return;
+    }
+
+    match DaemonClient::send_command(DaemonCommand::Show) {
+        Ok(response) => {
+            println!("Theme reload triggered: {}", response);
+        }
+        Err(e) => {
+            eprintln!("Failed to trigger theme reload: {}", e);
+            std::process::exit(1);
+        }
+    }
+}
+
+fn hide() {
+    if !DaemonClient::is_daemon_running() {
+        // If daemon is not running, just print a message.
+        // The theme will be loaded normally next time it starts.
+        println!("Daemon not running, nothing to reload.");
+        return;
+    }
+
+    match DaemonClient::send_command(DaemonCommand::Hide) {
+        Ok(response) => {
+            println!("Theme reload triggered: {}", response);
+        }
+        Err(e) => {
+            eprintln!("Failed to trigger theme reload: {}", e);
+            std::process::exit(1);
+        }
+    }
 }
 
 fn toggle_daemon(position: Option<String>, tab: Option<String>) {
@@ -77,7 +121,7 @@ fn toggle_daemon(position: Option<String>, tab: Option<String>) {
         eprintln!("Daemon is not running. Start it with: orbit daemon");
         std::process::exit(1);
     }
-    
+
     match DaemonClient::send_command(DaemonCommand::Toggle(position, tab)) {
         Ok(response) => {
             println!("Daemon response: {}", response);
@@ -96,7 +140,7 @@ fn reload_theme() {
         println!("Daemon not running, nothing to reload.");
         return;
     }
-    
+
     match DaemonClient::send_command(DaemonCommand::ReloadTheme) {
         Ok(response) => {
             println!("Theme reload triggered: {}", response);
@@ -113,7 +157,7 @@ fn reload_config() {
         println!("Daemon not running, nothing to reload.");
         return;
     }
-    
+
     match DaemonClient::send_command(DaemonCommand::ReloadConfig) {
         Ok(response) => {
             println!("Config reload triggered: {}", response);
@@ -144,27 +188,28 @@ fn list_networks() {
     let rt = tokio::runtime::Runtime::new().expect("Failed to create runtime");
     rt.block_on(async {
         match dbus::NetworkManager::new().await {
-            Ok(nm) => {
-                match nm.get_access_points().await {
-                    Ok(aps) => {
-                        println!("Available networks:");
-                        for ap in aps {
-                            let security = match ap.security {
-                                dbus::SecurityType::None => "Open",
-                                dbus::SecurityType::WEP => "WEP",
-                                dbus::SecurityType::WPA => "WPA",
-                                dbus::SecurityType::WPA2 => "WPA2",
-                                dbus::SecurityType::WPA3 => "WPA3",
-                            };
-                            let connected = if ap.is_connected { " [Connected]" } else { "" };
-                            println!("  {} ({}%) {}{}", ap.ssid, ap.signal_strength, security, connected);
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("Failed to get access points: {}", e);
+            Ok(nm) => match nm.get_access_points().await {
+                Ok(aps) => {
+                    println!("Available networks:");
+                    for ap in aps {
+                        let security = match ap.security {
+                            dbus::SecurityType::None => "Open",
+                            dbus::SecurityType::WEP => "WEP",
+                            dbus::SecurityType::WPA => "WPA",
+                            dbus::SecurityType::WPA2 => "WPA2",
+                            dbus::SecurityType::WPA3 => "WPA3",
+                        };
+                        let connected = if ap.is_connected { " [Connected]" } else { "" };
+                        println!(
+                            "  {} ({}%) {}{}",
+                            ap.ssid, ap.signal_strength, security, connected
+                        );
                     }
                 }
-            }
+                Err(e) => {
+                    eprintln!("Failed to get access points: {}", e);
+                }
+            },
             Err(e) => {
                 eprintln!("Failed to connect to NetworkManager: {}", e);
             }
