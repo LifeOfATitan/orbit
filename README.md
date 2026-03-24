@@ -82,6 +82,12 @@ orbit toggle [position]
 # Open specific tab directly
 orbit toggle --tab [wifi|bluetooth|vpn]
 
+# Show the window
+orbit show
+
+# Hide the window
+orbit hide
+
 # Output status in JSON for Waybar
 orbit waybar-status
 
